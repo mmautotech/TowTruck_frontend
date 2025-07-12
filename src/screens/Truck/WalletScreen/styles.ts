@@ -1,0 +1,172 @@
+import { StyleSheet } from 'react-native';
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#fff' },
+  loader: { marginTop: 40 },
+  scrollContainer: { padding: 16 },
+  balanceLabel: { fontSize: 16, fontWeight: '600', color: '#000' },
+  balanceValue: { fontSize: 32, fontWeight: '600', marginBottom: 12, color: '#357EBD' },
+  addButton: {
+    backgroundColor: '#357EBD',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  addButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  transactionHeading: {
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderBottomColor: '#ccc',
+    marginBottom: 8,
+  },
+  tabItem: {
+    alignItems: 'center',
+    flex: 1,
+    paddingBottom: 6,
+  },
+  tabText: { fontSize: 16, color: '#777' },
+  tabTextActive: { color: '#357EBD', fontWeight: 'bold' },
+  activeUnderline: {
+    height: 2,
+    width: '100%',
+    backgroundColor: '#357EBD',
+    marginTop: 4,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#888',
+    fontSize: 16,
+    marginVertical: 24,
+    fontStyle: 'italic',
+  },
+  // --- NEW AND UPDATED FOR TRANSACTION LIST ---
+  transactionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomColor: '#eee',
+    borderBottomWidth: 1,
+    minHeight: 50,
+  },
+  arrow: {
+    fontSize: 22,
+    width: 30,
+    textAlign: 'center',
+    marginRight: 2,
+  },
+  txMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  proofDetails: {
+    flex: 1,
+    fontSize: 14,
+    color: '#222',
+    marginRight: 8,
+  },
+  statusBox: {
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 8,
+    minWidth: 68,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+    height: 26,
+  },
+  amount: {
+    width: 80,
+    fontWeight: '700',
+    fontSize: 16,
+    textAlign: 'right',
+  },
+  balanceCol: {
+    width: 70,
+    fontWeight: '500',
+    fontSize: 15,
+    color: '#357EBD',
+    textAlign: 'right',
+    marginLeft: 6,
+  },
+  // --- MODALS ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    width: '100%',
+    padding: 20,
+    borderRadius: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 16,
+  },
+  modalButton: {
+    backgroundColor: '#357EBD',
+    padding: 12,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  modalButtonText: {
+    color: '#fff',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  cancelText: {
+    textAlign: 'center',
+    color: '#777',
+    fontSize: 16,
+    marginTop: 8,
+  },
+  // --- LOG MODAL ---
+  logModalContainer: {
+    backgroundColor: '#fff',
+    width: '100%',
+    padding: 18,
+    borderRadius: 10,
+    alignItems: 'center',
+    maxHeight: 400,
+  },
+  logItem: {
+    marginBottom: 12,
+    borderBottomColor: '#e0e0e0',
+    borderBottomWidth: 1,
+    paddingBottom: 7,
+    width: '100%',
+  },
+  logAction: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 2,
+  },
+  logMeta: {
+    fontSize: 12,
+    color: '#888',
+    fontStyle: 'italic',
+  },
+});
+
+export default styles;

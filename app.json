@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "towly",
+    "slug": "towly",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#357EBD"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.mmitsol.towly"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4858e267-6b6f-413b-b0dc-7c512065a41b"
+      }
+    }
+  }
+}
