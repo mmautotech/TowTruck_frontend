@@ -8,8 +8,8 @@ import axios, {
 } from 'axios';
 import { SignoutUser } from './Signout_User';
 
-const DEV_API  = process.env.EXPO_PUBLIC_API_URL_DEV  ?? 'https://c3ae3f4da5c5.ngrok-free.app/api/';
-const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'https://c3ae3f4da5c5.ngrok-free.app/api/';
+const DEV_API  = process.env.EXPO_PUBLIC_API_URL_DEV  ?? 'http://192.168.18.69:5000/api';
+const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.18.69:5000/api';
 const baseURL  = __DEV__ ? DEV_API : PROD_API;
 
 const axiosInstance: AxiosInstance = axios.create({
