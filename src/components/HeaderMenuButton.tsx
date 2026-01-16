@@ -25,7 +25,7 @@ export default HeaderMenuButton;
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? hp(2.5) : hp(5), // extra padding for iOS
+    top: Platform.OS === 'android' ? hp(6) : hp(5), // extra padding for iOS
     left: wp(4),
     zIndex: 99,
   },

@@ -1,4 +1,3 @@
-// components/ProfileImageHandler.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, Platform } from 'react-native';
 import { wp, hp } from '../utils/responsive';
@@ -9,14 +8,10 @@ type Props = {
   onPickImage: () => void;
 };
 
-export default function ProfileImageHandler({
-  imageUri,
-  label = 'Upload Avatar',
-  onPickImage,
-}: Props) {
-  const resolvedUri = imageUri
-    ? imageUri.startsWith('data:') ? imageUri : `data:image/jpeg;base64,${imageUri}`
-    : null;
+export default function ProfileImageHandler({ imageUri, label = 'Upload Avatar', onPickImage }: Props) {
+  // Only prefix with data: if the URI is actually Base64
+  const resolvedUri =
+    imageUri && imageUri.startsWith('data:') ? imageUri : imageUri;
 
   return (
     <TouchableOpacity style={styles.imageContainer} onPress={onPickImage} activeOpacity={0.8}>

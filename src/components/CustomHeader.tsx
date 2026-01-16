@@ -6,7 +6,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { wp, hp } from '../utils/responsive';
@@ -31,56 +33,71 @@ const CustomHeader: React.FC<CustomHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.headerContainer, { backgroundColor }]}>
+    <SafeAreaView
+      edges={['top']}
+      style={[styles.safeArea, { backgroundColor }]}
+    >
       <StatusBar
         barStyle="light-content"
         backgroundColor={backgroundColor}
-        translucent={false}
+        translucent={Platform.OS === 'android'}
       />
 
-      {(showBackButton || showMenuButton) && (
-        <TouchableOpacity
-          onPress={showBackButton ? () => navigation.goBack() : handleMenu}
-          style={styles.iconWrapper}
-        >
-          <Ionicons
-            name={showBackButton ? 'arrow-back' : 'menu'}
-            size={wp(6)}
-            color="#fff"
-          />
-        </TouchableOpacity>
-      )}
+      <View style={styles.headerContainer}>
+        {(showBackButton || showMenuButton) && (
+          <TouchableOpacity
+            onPress={showBackButton ? () => navigation.goBack() : handleMenu}
+            style={styles.iconWrapper}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={showBackButton ? 'arrow-back' : 'menu'}
+              size={wp(6)}
+              color="#fff"
+            />
+          </TouchableOpacity>
+        )}
 
-      <Text numberOfLines={1} style={styles.title}>
-        {title}
-      </Text>
-    </View>
+        <Text numberOfLines={1} style={styles.title}>
+          {title}
+        </Text>
+      </View>
+    </SafeAreaView>
   );
 };
 
 export default React.memo(CustomHeader);
 
 const styles = StyleSheet.create({
-  headerContainer: {
-    height: hp(8),
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderBottomStartRadius: wp(6),
-    borderBottomEndRadius: wp(6),
-    elevation: 4,
-    position: 'relative',
-    paddingHorizontal: wp(4),
+  safeArea: {
+    width: '100%',
   },
+
+  headerContainer: {
+    height: hp(7),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    paddingHorizontal: wp(4),
+
+    borderBottomLeftRadius: wp(6),
+    borderBottomRightRadius: wp(6),
+
+    elevation: 4,
+  },
+
   iconWrapper: {
     position: 'absolute',
     left: wp(4),
-    top: hp(2.2),
-    padding: wp(1),
-    zIndex: 10,
+    padding: wp(1.5),
   },
+
   title: {
     color: '#fff',
     fontSize: wp(4.5),
     fontWeight: '600',
+    maxWidth: '75%',
+    textAlign: 'center',
   },
 });

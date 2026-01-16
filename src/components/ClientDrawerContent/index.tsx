@@ -6,8 +6,12 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
-import { DrawerContentComponentProps, useDrawerStatus } from '@react-navigation/drawer';
+import {
+  DrawerContentComponentProps,
+  useDrawerStatus,
+} from '@react-navigation/drawer';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
@@ -32,14 +36,12 @@ const ClientDrawerContent: React.FC<DrawerContentComponentProps> = ({
   const drawerStatus = useDrawerStatus();
   const currentRoute = state.routeNames[state.index];
 
-  // Refresh every time drawer is opened
   useEffect(() => {
     if (drawerStatus === 'open') {
       refreshUserInfo();
     }
   }, [drawerStatus, refreshUserInfo]);
 
-  // Also refresh if setDrawer flag is set (used for post-profile update)
   useFocusEffect(
     useCallback(() => {
       const refreshIfRequested = async () => {
@@ -59,9 +61,7 @@ const ClientDrawerContent: React.FC<DrawerContentComponentProps> = ({
       {
         text: 'Signout',
         style: 'destructive',
-        onPress: () => {
-          SignoutUser();
-        },
+        onPress: SignoutUser,
       },
     ]);
   };
@@ -69,19 +69,28 @@ const ClientDrawerContent: React.FC<DrawerContentComponentProps> = ({
   const renderItem = (label: string, routeName: string) => {
     const isActive = currentRoute === routeName;
     return (
-      <TouchableOpacity key={routeName} onPress={() => navigation.navigate(routeName)}>
-        <Text style={[styles.item, isActive && styles.activeItem]}>{label}</Text>
+      <TouchableOpacity
+        key={routeName}
+        onPress={() => navigation.navigate(routeName)}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.item, isActive && styles.activeItem]}>
+          {label}
+        </Text>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.innerContainer}>
+    <SafeAreaView edges={['top', 'bottom']} style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
           {loading ? (
-            <ActivityIndicator size="large" color="#1B5E20" style={{ marginVertical: 24 }} />
+            <ActivityIndicator size="large" color="#1B5E20" />
           ) : (
             <>
               <Image source={{ uri: avatar }} style={styles.avatar} />
@@ -101,9 +110,11 @@ const ClientDrawerContent: React.FC<DrawerContentComponentProps> = ({
         {renderItem('History', 'ClientHistoryScreen')}
         {renderItem('Settings', 'ClientSettingsScreen')}
         {renderItem('Terms & Conditions', 'ClientTerms_ConditionsScreen')}
+      </ScrollView>
 
-        {/* Sign Out */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      {/* Logout (Pinned to Bottom) */}
+      <View style={styles.logoutContainer}>
+        <TouchableOpacity onPress={handleLogout} activeOpacity={0.7}>
           <Text style={[styles.item, styles.logoutText]}>Signout</Text>
         </TouchableOpacity>
       </View>

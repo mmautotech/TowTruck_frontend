@@ -7,8 +7,8 @@ export const fetchProfileStatus = async () => {
   return response.data;
 };
 
-const DEV_API  = process.env.EXPO_PUBLIC_API_URL_DEV  ?? 'http://192.168.18.69:5000/api/';
-const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.18.69:5000/api/';
+const DEV_API = process.env.EXPO_PUBLIC_API_URL_DEV ?? 'http://192.168.18.69:5000/api';
+const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.18.69:5000/api';
 
 const BASE_URL = __DEV__ ? DEV_API : PROD_API;
 
@@ -32,7 +32,7 @@ export async function updateClientProfile(payload: FormData): Promise<ClientProf
 
   if (!response.ok) {
     let err = {};
-    try { err = await response.json(); } catch {}
+    try { err = await response.json(); } catch { }
     throw new Error((err as any).message || 'Failed to update profile');
   }
   const data = await response.json();
@@ -59,7 +59,7 @@ export async function updateDriverProfile(form: FormData): Promise<DriverProfile
 
   if (!response.ok) {
     let err = {};
-    try { err = await response.json(); } catch {}
+    try { err = await response.json(); } catch { }
     throw new Error((err as any).message || 'Failed to update driver profile');
   }
   const data = await response.json();
@@ -86,7 +86,7 @@ export async function updateVehicleProfile(form: FormData): Promise<VehicleProfi
 
   if (!response.ok) {
     let err = {};
-    try { err = await response.json(); } catch {}
+    try { err = await response.json(); } catch { }
     throw new Error((err as any).message || 'Failed to update vehicle profile');
   }
   const data = await response.json();
