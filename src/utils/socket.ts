@@ -8,40 +8,44 @@ export let socket: Socket | null = null;
 let currentToken: string | null = null;
 
 /**
- * Derive your Socket.IO URL from API_BASE_URL, or fall back
- * if it's not defined or invalid.
+ * Socket.IO URL derived from API_BASE_URL or fallback
  */
 const SOCKET_URL = (() => {
   if (typeof API_BASE_URL === 'string') {
     try {
-      // e.g. "https://host:port/api" → "https://host:port"
-      return new URL(API_BASE_URL).origin;
+      return new URL(API_BASE_URL).origin; // e.g., http://192.168.18.84:5000
     } catch {
-      // strip trailing "/api" if URL parsing fails
       return API_BASE_URL.replace(/\/api\/?$/, '');
     }
   }
-  // final fallback
-  return 'https://c3ae3f4da5c5.ngrok-free.app';
+  // fallback (only if nothing else works)
+  return 'http://192.168.18.84:5000';
 })();
 
-interface AuthPayload { token: string; }
+interface AuthPayload {
+  token: string;
+}
 
 /**
  * Connect (or reconnect) a single shared Socket.IO instance.
- * Automatically re-authenticates on reconnect.
+ * Handles token authentication, rejoining rooms, and fallback transports.
  */
 export async function connectSocket(token: string): Promise<void> {
   currentToken = token;
 
   if (!socket) {
+    console.log('🔗 [Socket Connecting] URL:', SOCKET_URL, 'Token:', token);
+
     socket = io(SOCKET_URL, {
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'], // allow fallback for React Native
       auth: { token } as AuthPayload,
       autoConnect: true,
       reconnection: true,
+      reconnectionAttempts: Infinity,
+      timeout: 10000, // 10s timeout
     });
 
+    // Successful connection
     socket.on('connect', async () => {
       console.log('✅ [Socket Connected] ID:', socket?.id);
       try {
@@ -55,22 +59,25 @@ export async function connectSocket(token: string): Promise<void> {
       }
     });
 
+    // Listen to all events for debug
     socket.onAny((event, ...args) => {
       console.log(`📩 [Socket Event] '${event}':`, args);
     });
 
+    // Disconnection handler
     socket.on('disconnect', reason => {
       console.log('❌ [Socket Disconnected] Reason:', reason);
       if (reason === 'io server disconnect') {
+        // manual reconnect if server disconnected
         socket?.connect();
       }
     });
 
+    // Reconnection handler
     socket.io.on('reconnect', async attempts => {
       console.log('🔄 [Socket Reconnected] After', attempts, 'attempts');
-      if (currentToken) {
-        socket!.auth = { token: currentToken } as AuthPayload;
-      }
+      if (currentToken) socket!.auth = { token: currentToken } as AuthPayload;
+
       try {
         const userId = await AsyncStorage.getItem('user_id');
         if (userId) {
@@ -82,10 +89,14 @@ export async function connectSocket(token: string): Promise<void> {
       }
     });
 
+    // Connection errors
     socket.on('connect_error', err => {
-      console.warn('🚨 [Socket Connect Error]:', err.message);
+      console.warn('🚨 [Socket Connect Error]:', err.message, err);
     });
 
+    socket.on('connect_timeout', () => {
+      console.warn('⏱ [Socket Connect Timeout]');
+    });
   } else if (!socket.connected) {
     socket.auth = { token } as AuthPayload;
     socket.connect();
@@ -95,7 +106,7 @@ export async function connectSocket(token: string): Promise<void> {
 }
 
 /**
- * Gracefully tear down the socket: remove listeners, disconnect, null out.
+ * Gracefully disconnect the socket
  */
 export function disconnectSocket(): void {
   if (!socket) return;

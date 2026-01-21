@@ -13,7 +13,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mmitsol.towly"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +30,9 @@
     "extra": {
       "eas": {
         "projectId": "4858e267-6b6f-413b-b0dc-7c512065a41b"
-      }
+      },
+      "androidMapsApiKey": "AIzaSyCFLjq_3v5mculpeuiz7NQKNaB68g-qgyI",
+      "iosMapsApiKey": "AIzaSyCFLjq_3v5mculpeuiz7NQKNaB68g-qgyI"
     }
   }
 }

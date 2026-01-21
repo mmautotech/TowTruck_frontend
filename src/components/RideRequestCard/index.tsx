@@ -1,6 +1,6 @@
 // src/components/RideRequestCard/index.tsx
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { getDistance } from 'geolib';
 import styles from './styles';
-import useReverseGeocode from '../../hooks/useReverseGeocode';
+import { useReverseGeocode } from '../../hooks/useReverseGeocode';
 import type { VehicleDetails } from '../../api/types';
 
 export type RideRequestCardProps = {
@@ -68,15 +68,34 @@ const categoryLabels: Record<VehicleDetails['vehicle_category'], string> = {
   'Long Wheel Base': 'Long Wheel Base',
 };
 
-
 const RideRequestCard: React.FC<RideRequestCardProps> = React.memo(
   ({ item, userLocation, onPress, tab }) => {
     const [lng1, lat1] = item.origin_location.coordinates;
     const [lng2, lat2] = item.dest_location.coordinates;
 
-    const { address: pickupAddress } = useReverseGeocode(lat1, lng1);
-    const { address: dropoffAddress } = useReverseGeocode(lat2, lng2);
+    // Use the hook to get the reverseGeocode function
+    const { reverseGeocode, loading: geoLoading } = useReverseGeocode();
+    const [pickupAddress, setPickupAddress] = useState('Loading...');
+    const [dropoffAddress, setDropoffAddress] = useState('Loading...');
 
+    // Fetch addresses asynchronously
+    useEffect(() => {
+      let active = true;
+      (async () => {
+        try {
+          const addr1 = await reverseGeocode({ latitude: lat1, longitude: lng1 });
+          const addr2 = await reverseGeocode({ latitude: lat2, longitude: lng2 });
+          if (!active) return;
+          setPickupAddress(addr1);
+          setDropoffAddress(addr2);
+        } catch {
+          if (!active) return;
+          setPickupAddress('Unknown location');
+          setDropoffAddress('Unknown location');
+        }
+      })();
+      return () => { active = false; };
+    }, [lat1, lng1, lat2, lng2, reverseGeocode]);
 
     const distMiles = useMemo(() => {
       if (!userLocation) return 'N/A';
@@ -124,7 +143,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = React.memo(
         {/* header */}
         <View style={styles.headerRow}>
           <Image
-            source={{ uri: item.user_photo ||'https://cdn-icons-png.flaticon.com/512/847/847969.png' }}
+            source={{ uri: item.user_photo || 'https://cdn-icons-png.flaticon.com/512/847/847969.png' }}
             style={styles.avatar}
           />
           <View style={styles.titleBlock}>

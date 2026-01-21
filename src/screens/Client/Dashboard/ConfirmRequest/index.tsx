@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,30 +23,31 @@ import {
 } from '../../../../api';
 import type { RideRequest } from '../../../../api/types';
 import type { ClientStackParamList } from '../../../../types';
-import useReverseGeocode from '../../../../hooks/useReverseGeocode';
+import { useReverseGeocode } from '../../../../hooks/useReverseGeocode';
 import { SignoutUser } from '../../../../utils/Signout_User';
 
-type NavProp = StackNavigationProp<ClientStackParamList, 'ClientConfirmRequestScreen'>;
+type NavProp = StackNavigationProp<
+  ClientStackParamList,
+  'ClientConfirmRequestScreen'
+>;
 
 const ClientConfirmRequestScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
+
   const [request, setRequest] = useState<RideRequest | null>(null);
   const [loading, setLoading] = useState(false);
+  const [originAddress, setOriginAddress] = useState('Loading...');
+  const [destAddress, setDestAddress] = useState('Loading...');
 
-  // Always define all hooks at the top!
-  const oLat = request?.origin_location?.coordinates?.[1] ?? 0;
-  const oLon = request?.origin_location?.coordinates?.[0] ?? 0;
-  const dLat = request?.dest_location?.coordinates?.[1] ?? 0;
-  const dLon = request?.dest_location?.coordinates?.[0] ?? 0;
+  // 🔹 TWO separate hooks (origin & destination)
+  const originGeo = useReverseGeocode();
+  const destGeo = useReverseGeocode();
 
-  const { address: originAddress } = useReverseGeocode(oLat, oLon);
-  const { address: destAddress }   = useReverseGeocode(dLat, dLon);
-
-  // Always check request status and reset if missing on every focus
   useFocusEffect(
     useCallback(() => {
       let active = true;
       setLoading(true);
+
       (async () => {
         try {
           const res = await fetchActiveRequest();
@@ -61,13 +62,40 @@ const ClientConfirmRequestScreen: React.FC = () => {
             );
             return;
           }
+
           setRequest(res);
+
+          if (
+            res.origin_location?.coordinates &&
+            res.dest_location?.coordinates
+          ) {
+            const oCoords = {
+              latitude: res.origin_location.coordinates[1],
+              longitude: res.origin_location.coordinates[0],
+            };
+
+            const dCoords = {
+              latitude: res.dest_location.coordinates[1],
+              longitude: res.dest_location.coordinates[0],
+            };
+
+            // Temporary placeholders
+            setOriginAddress('Loading...');
+            setDestAddress('Loading...');
+
+            // 🔹 Trigger reverse geocoding (NO await)
+            originGeo.reverseGeocode(oCoords);
+            destGeo.reverseGeocode(dCoords);
+          }
         } catch (err: any) {
           if (err?.response?.status === 401) {
             Alert.alert('Session expired', 'Please sign in again');
             await SignoutUser();
             navigation.dispatch(
-              CommonActions.reset({ index: 0, routes: [{ name: 'SigninScreen' }] })
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'SigninScreen' }],
+              })
             );
           } else {
             Alert.alert('Error', err.message || 'Failed to load request');
@@ -76,16 +104,35 @@ const ClientConfirmRequestScreen: React.FC = () => {
           if (active) setLoading(false);
         }
       })();
-      return () => { active = false; };
+
+      return () => {
+        active = false;
+      };
     }, [navigation])
   );
+
+  // 🔹 Sync origin address
+  useEffect(() => {
+    if (originGeo.address) {
+      setOriginAddress(originGeo.address);
+    }
+  }, [originGeo.address]);
+
+  // 🔹 Sync destination address
+  useEffect(() => {
+    if (destGeo.address) {
+      setDestAddress(destGeo.address);
+    }
+  }, [destGeo.address]);
 
   const handleConfirm = async () => {
     if (!request) return;
     setLoading(true);
+
     try {
       const { success, message } = await confirmRideRequest(request._id);
       if (!success) throw new Error(message || 'Confirm failed');
+
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -97,7 +144,10 @@ const ClientConfirmRequestScreen: React.FC = () => {
         Alert.alert('Session expired', 'Please sign in again');
         await SignoutUser();
         navigation.dispatch(
-          CommonActions.reset({ index: 0, routes: [{ name: 'SigninScreen' }] })
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'SigninScreen' }],
+          })
         );
       } else {
         Alert.alert('Error', err.message || 'Could not confirm');
@@ -110,6 +160,7 @@ const ClientConfirmRequestScreen: React.FC = () => {
   const handleCancel = async () => {
     if (!request) return;
     setLoading(true);
+
     try {
       await cancelRideRequest(request._id);
       navigation.dispatch(
@@ -123,7 +174,10 @@ const ClientConfirmRequestScreen: React.FC = () => {
         Alert.alert('Session expired', 'Please sign in again');
         await SignoutUser();
         navigation.dispatch(
-          CommonActions.reset({ index: 0, routes: [{ name: 'SigninScreen' }] })
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'SigninScreen' }],
+          })
         );
       } else {
         Alert.alert('Error', err.message || 'Could not cancel');
@@ -143,7 +197,10 @@ const ClientConfirmRequestScreen: React.FC = () => {
 
   const { pickup_date, vehicle_details } = request;
 
-  const Detail: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  const Detail: React.FC<{ label: string; value: string }> = ({
+    label,
+    value,
+  }) => (
     <View style={styles.detailContainer}>
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.value}>{value}</Text>
@@ -153,22 +210,41 @@ const ClientConfirmRequestScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <CustomHeader title="Confirm Your Request" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Detail label="Pickup Date"      value={new Date(pickup_date).toDateString()} />
-        <Detail label="Pickup Location"  value={originAddress} />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Detail
+          label="Pickup Date"
+          value={new Date(pickup_date).toDateString()}
+        />
+        <Detail label="Pickup Location" value={originAddress} />
         <Detail label="Dropoff Location" value={destAddress} />
-        <Detail label="Make"             value={vehicle_details.make} />
-        <Detail label="Model"            value={vehicle_details.model} />
-        <Detail label="Registration No"  value={vehicle_details.registration} />
-        <Detail label="Year"             value={vehicle_details.year_of_manufacture.toString()} />
-        <Detail label="Wheels Category"  value={vehicle_details.wheels_category} />
+        <Detail label="Make" value={vehicle_details.make} />
+        <Detail label="Model" value={vehicle_details.model} />
+        <Detail label="Registration No" value={vehicle_details.registration} />
+        <Detail
+          label="Year"
+          value={vehicle_details.year_of_manufacture.toString()}
+        />
+        <Detail
+          label="Wheels Category"
+          value={vehicle_details.wheels_category}
+        />
+
         {vehicle_details.vehicle_category !== 'donot-apply' && (
-          <Detail label="Vehicle Category"  value={vehicle_details.vehicle_category} />
+          <Detail
+            label="Vehicle Category"
+            value={vehicle_details.vehicle_category}
+          />
         )}
+
         {vehicle_details.loaded !== 'Unloaded' && (
           <Detail label="Status" value={vehicle_details.loaded} />
         )}
       </ScrollView>
+
       <View style={styles.FooterContainer}>
         <TouchableOpacity
           style={styles.confirmButton}
@@ -177,6 +253,7 @@ const ClientConfirmRequestScreen: React.FC = () => {
         >
           <Text style={styles.confirmText}>CONFIRM REQUEST</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={handleCancel}

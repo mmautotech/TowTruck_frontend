@@ -1,3 +1,5 @@
+// src/screens/Client/Dashboard/ClientDriverTrackingScreen.tsx
+
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -5,16 +7,18 @@ import {
   Image,
   TouchableOpacity,
   Animated,
-  Dimensions,
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Dimensions,
+  PanResponder,
 } from 'react-native';
 import MapView from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { getDistance } from 'geolib';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HeaderMenuButton from '../../../../components/HeaderMenuButton';
 import GlowingMarker from '../../../../components/GlowingMarker';
@@ -37,46 +41,65 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ClientDriverTrackingScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const insets = useSafeAreaInsets();
+
   const [expanded, setExpanded] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
 
   const [loading, setLoading] = useState(true);
   const [driverInfo, setDriverInfo] = useState<any>(null);
+  const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
 
-  // -- Notification Modal (for ride reopen/complete) --
-  const { notifications, markAsRead, refresh: refreshNotifications, unreadCount } = useNotifications();
+  const { notifications, markAsRead, refresh: refreshNotifications } = useNotifications();
   const [notificationModal, setNotificationModal] = useState<{
     visible: boolean;
     notif: (typeof notifications)[0] | null;
   }>({ visible: false, notif: null });
 
-  // Messaging badge still driven by socket:
-  const {
-    unreadCount: socketUnreadCount,
-    clearUnreadCount,
-  } = useClientSocket();
+  const { unreadCount: socketUnreadCount, clearUnreadCount, socket } = useClientSocket();
 
-  // Animation for expand/collapse
+  const CARD_COLLAPSED_HEIGHT = 100;
+  const CARD_EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.46;
+
   const mapHeight = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_HEIGHT * 0.92, SCREEN_HEIGHT * 0.56],
+    outputRange: [SCREEN_HEIGHT - CARD_COLLAPSED_HEIGHT, SCREEN_HEIGHT - CARD_EXPANDED_HEIGHT],
   });
 
   const cardHeight = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_HEIGHT * 0.1, SCREEN_HEIGHT * 0.46],
+    outputRange: [CARD_COLLAPSED_HEIGHT, CARD_EXPANDED_HEIGHT],
   });
 
-  const toggleExpand = () => {
-    Animated.timing(anim, {
-      toValue: expanded ? 0 : 1,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-    setExpanded(!expanded);
+  const chevronRotation = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => false,
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy < -30) expandCard();
+        else if (gestureState.dy > 30) collapseCard();
+      },
+    })
+  ).current;
+
+  const expandCard = () => {
+    Animated.spring(anim, { toValue: 1, useNativeDriver: false, damping: 12, stiffness: 150 }).start();
+    setExpanded(true);
   };
+
+  const collapseCard = () => {
+    Animated.spring(anim, { toValue: 0, useNativeDriver: false, damping: 12, stiffness: 150 }).start();
+    setExpanded(false);
+  };
+
+  const toggleExpand = () => (expanded ? collapseCard() : expandCard());
 
   const handleMessagePress = async () => {
     if (driverInfo?.truck?.id) {
@@ -87,7 +110,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
     }
   };
 
-  // Fetch driver info on focus
+  // Fetch initial driver info
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -98,6 +121,12 @@ const ClientDriverTrackingScreen: React.FC = () => {
           if (data && data.truck && isActive) {
             setDriverInfo(data);
             await setItem('reciever_id', data.truck.id);
+
+            // Set initial driver location
+            const coords = data.truck.current_location?.coordinates;
+            if (coords) {
+              setDriverLocation({ latitude: coords[1], longitude: coords[0] });
+            }
           }
         } catch (err: any) {
           setError(err.message || 'Failed to fetch driver tracking info');
@@ -105,16 +134,29 @@ const ClientDriverTrackingScreen: React.FC = () => {
           setLoading(false);
         }
       })();
-      return () => {
-        isActive = false;
-      };
+      return () => { isActive = false; };
     }, [])
   );
 
-  // Notification modal logic (rideReopened/rideCompleted)
+  // Listen for live location updates via socket
+  useEffect(() => {
+    if (!socket || !driverInfo?.truck?.id) return;
+
+    const handleLocationUpdate = (event: any) => {
+      if (event.type === 'driverLocationUpdate' && event.truckId === driverInfo.truck.id) {
+        setDriverLocation({ latitude: event.latitude, longitude: event.longitude });
+      }
+    };
+
+    socket.on('driverLocationUpdate', handleLocationUpdate);
+    return () => {
+      socket.off('driverLocationUpdate', handleLocationUpdate);
+    };
+  }, [socket, driverInfo?.truck?.id]);
+
+  // Notification modal logic
   useEffect(() => {
     if (!driverInfo?.request_id) return;
-    // Find unread relevant notification
     const relevantNotif = notifications
       .filter(
         n =>
@@ -125,41 +167,18 @@ const ClientDriverTrackingScreen: React.FC = () => {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
     if (relevantNotif && !notificationModal.visible) {
-      setNotificationModal({
-        visible: true,
-        notif: relevantNotif,
-      });
+      setNotificationModal({ visible: true, notif: relevantNotif });
     }
   }, [notifications, driverInfo?.request_id, notificationModal.visible]);
 
-  // Handle modal close: mark notification as read and go back to dashboard
   const handleNotificationModalClose = async () => {
     if (notificationModal.notif?._id) {
       await markAsRead(notificationModal.notif._id);
       refreshNotifications();
     }
     setNotificationModal({ visible: false, notif: null });
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'ClientDashboardScreen' }],
-    });
+    navigation.reset({ index: 0, routes: [{ name: 'ClientDashboardScreen' }] });
   };
-
-  // Parse modal fields for UniversalMessageModal
-  const notif = notificationModal.notif;
-  let modalType: ModalType = 'info';
-  let modalReason: string | undefined = undefined;
-
-  if (notif) {
-    if (notif.type === 'rideReopened' || notif.type === 'rideCompleted') {
-      modalType = notif.type as ModalType;
-      // Try to parse 'Reason: ...' from the message, if present
-      if (notif.message?.toLowerCase().includes('reason:')) {
-        const match = notif.message.match(/reason:\s*(.*)$/i);
-        if (match && match[1]) modalReason = match[1];
-      }
-    }
-  }
 
   if (loading) {
     return (
@@ -173,19 +192,16 @@ const ClientDriverTrackingScreen: React.FC = () => {
   if (error || !driverInfo || !driverInfo.truck) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={{ color: 'red', fontSize: 16 }}>
-          {error || 'Driver tracking unavailable'}
-        </Text>
+        <Text style={{ color: 'red', fontSize: 16 }}>{error || 'Driver tracking unavailable'}</Text>
       </View>
     );
   }
 
-  // fetch driver tracking info in request_id for cancellation
   const { origin_location, dest_location, truck, offered_price, request_id } = driverInfo;
 
-  const coords = truck?.current_location?.coordinates || null;
-  const lat = coords?.[1] ?? 33.6844;
-  const lon = coords?.[0] ?? 73.0479;
+  // Use live driver location if available
+  const lat = driverLocation?.latitude ?? truck.current_location?.coordinates?.[1] ?? 33.6844;
+  const lon = driverLocation?.longitude ?? truck.current_location?.coordinates?.[0] ?? 73.0479;
 
   const originLat = origin_location?.coordinates?.[1] ?? 0;
   const originLon = origin_location?.coordinates?.[0] ?? 0;
@@ -203,8 +219,6 @@ const ClientDriverTrackingScreen: React.FC = () => {
     ? truck.driver_photo
     : `data:image/jpeg;base64,${truck.driver_photo}`;
 
-  // ===== Cancel Actions =====
-  // Only notification triggers navigation!
   const handleCancelPermanent = async (reason: string) => {
     setCancelModalVisible(false);
     setLoading(true);
@@ -214,10 +228,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
       Alert.alert('Error', err.message || 'Failed to cancel ride.');
     } finally {
       setLoading(false);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ClientDashboardScreen' }],
-      });
+      navigation.reset({ index: 0, routes: [{ name: 'ClientDashboardScreen' }] });
     }
   };
 
@@ -230,121 +241,117 @@ const ClientDriverTrackingScreen: React.FC = () => {
       Alert.alert('Error', err.message || 'Failed to reopen ride.');
     } finally {
       setLoading(false);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'ClientDashboardScreen' }],
-      });
+      navigation.reset({ index: 0, routes: [{ name: 'ClientDashboardScreen' }] });
     }
   };
 
-
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f2f2f2' }}>
       <HeaderMenuButton />
 
-      {/* ==== Ride Status Notification Modal ==== */}
       <UniversalMessageModal
         visible={notificationModal.visible}
         onClose={handleNotificationModalClose}
-        type={modalType}
+        type={notificationModal.notif?.type as ModalType}
         title={undefined}
-        message={notif?.message || ''}
-        reason={modalReason}
+        message={notificationModal.notif?.message || ''}
       />
 
+      {/* Map */}
       <Animated.View style={{ height: mapHeight }}>
         <MapView
           style={StyleSheet.absoluteFill}
           showsUserLocation
-          initialRegion={{
-            latitude: lat,
-            longitude: lon,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
+          initialRegion={{ latitude: lat, longitude: lon, latitudeDelta: 0.05, longitudeDelta: 0.05 }}
         >
-          {coords && <GlowingMarker latitude={lat} longitude={lon} />}
+          {driverLocation && <GlowingMarker latitude={driverLocation.latitude} longitude={driverLocation.longitude} />}
         </MapView>
       </Animated.View>
 
-      <Animated.View style={[styles.bottomCard, { height: cardHeight }]}>
-        <TouchableOpacity
-          activeOpacity={1}
-          style={StyleSheet.absoluteFill}
-          onPress={toggleExpand}
-        />
-        <Ionicons
-          name={expanded ? 'chevron-down' : 'chevron-up'}
-          size={24}
-          color="#fff"
-          style={styles.chevron}
-        />
+      {/* Bottom Card */}
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          styles.bottomCard,
+          { height: cardHeight, bottom: insets.bottom, paddingBottom: insets.bottom + 12 },
+        ]}
+      >
+        <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={toggleExpand} />
 
-        <Text style={styles.headline}>Track Your Driver</Text>
+        {/* Chevron */}
+        <Animated.View style={[styles.chevron, { transform: [{ rotate: chevronRotation }] }]}>
+          <Ionicons name="chevron-up" size={24} color="#fff" />
+        </Animated.View>
 
-        <Image
-          source={{
-            uri: avatarUri || 'https://cdn-icons-png.flaticon.com/512/847/847969.png',
-          }}
-          style={styles.avatar}
-        />
+        {/* Collapsed Card */}
+        {!expanded && (
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Image source={{ uri: avatarUri }} style={[styles.avatar, { width: 60, height: 60, borderRadius: 30 }]} />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.name}>
+                {truck.first_name || ''} {truck.last_name || truck.user_name}
+              </Text>
+              <Text style={styles.infoText}>ETA: {estimatedTimeHours} hrs ({distanceMiles} mi)</Text>
+            </View>
+          </View>
+        )}
 
-        <Text style={styles.name}>
-          {truck.first_name || ''} {truck.last_name || truck.user_name}
-        </Text>
+        {/* Expanded Card */}
+        {expanded && (
+          <View style={{ alignItems: 'center', width: '100%' }}>
+            <Text style={styles.headline}>Track Your Driver</Text>
 
-        <View style={styles.ratingRow}>
-          {[...Array(5)].map((_, i) => (
-            <Ionicons
-              key={i}
-              name="star"
-              size={16}
-              color={i < Math.round(truck.rating) ? '#FFD700' : '#ccc'}
-            />
-          ))}
-          <Text style={styles.rides}>({truck.ratings_count})</Text>
-        </View>
+            <Image source={{ uri: avatarUri }} style={styles.avatar} />
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoText}>Price: £{offered_price}</Text>
-        </View>
+            <Text style={styles.name}>
+              {truck.first_name || ''} {truck.last_name || truck.user_name}
+            </Text>
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoText}>ETA: {estimatedTimeHours} hrs ({distanceMiles} mi)</Text>
-        </View>
+            <View style={styles.ratingRow}>
+              {[...Array(5)].map((_, i) => (
+                <Ionicons
+                  key={i}
+                  name="star"
+                  size={16}
+                  color={i < Math.round(truck.rating) ? '#FFD700' : '#ccc'}
+                  style={{ marginHorizontal: 2 }}
+                />
+              ))}
+              <Text style={styles.rides}>({truck.ratings_count})</Text>
+            </View>
 
-        {/* ===== Button Row ===== */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => setCancelModalVisible(true)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="close-circle" size={18} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.cancelText}>Cancel Ride</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.messageButton}
-            onPress={handleMessagePress}
-            activeOpacity={0.85}
-          >
-            <Ionicons
-              name="chatbubble-ellipses-outline"
-              size={21}
-              color="#fff"
-              style={styles.messageIcon}
-            />
-            <Text style={styles.messageText}>Message</Text>
-            {socketUnreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{socketUnreadCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoText}>Price: £{offered_price}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoText}>ETA: {estimatedTimeHours} hrs ({distanceMiles} mi)</Text>
+            </View>
+
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setCancelModalVisible(true)}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="close-circle" size={18} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.cancelText}>Cancel Ride</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.messageButton} onPress={handleMessagePress} activeOpacity={0.85}>
+                <Ionicons name="chatbubble-ellipses-outline" size={21} color="#fff" style={styles.messageIcon} />
+                <Text style={styles.messageText}>Message</Text>
+                {socketUnreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadText}>{socketUnreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </Animated.View>
 
-      {/* Modal */}
       <CancelRideModal
         visible={cancelModalVisible}
         onClose={() => setCancelModalVisible(false)}
@@ -352,7 +359,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
         onCancelPermanent={handleCancelPermanent}
         onReopen={handleReopen}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -31,7 +31,7 @@ import { TruckStackParamList } from '../../../types';
 import styles from './styles';
 
 import { useNotifications } from '../../../hooks/useNotifications';
-import useReverseGeocode from '../../../hooks/useReverseGeocode';
+import { useReverseGeocode } from '../../../hooks/useReverseGeocode';
 
 // --- Helper: Parse backend notification message and extract coordinates as numbers
 function parseAcceptedOfferMessage(message: string) {
@@ -65,7 +65,7 @@ const TruckDashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { coords: userCoords, error: locError } = useLocation();
 
-  // Profile checks and launch logic
+  // Profile checks
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [profileStatus, setProfileStatus] = useState<{ profile_complete: boolean; status: string } | null>(null);
 
@@ -98,6 +98,11 @@ const TruckDashboardScreen: React.FC = () => {
     offerPrice: string;
   } | null>(null);
 
+  // Reverse geocode hook
+  const { reverseGeocode } = useReverseGeocode();
+  const [fromAddress, setFromAddress] = useState('Loading...');
+  const [toAddress, setToAddress] = useState('Loading...');
+
   // --- Set hasLoadedNotifications when notifications are first fetched
   useEffect(() => {
     if (!notifLoading) setHasLoadedNotifications(true);
@@ -112,13 +117,12 @@ const TruckDashboardScreen: React.FC = () => {
 
   // --- Show notification modal if needed, otherwise check for active ride
   useEffect(() => {
-    // Only run when notifications have loaded at least once
     if (!hasLoadedNotifications || notifLoading) return;
 
-    // 1. Priority: show rideAccepted notification if unread exists
     const unreadRideAccepted = notifications.find(
       n => n.type === 'rideAccepted' && !n.read
     );
+
     if (unreadRideAccepted && shownNotifId !== unreadRideAccepted._id) {
       const parsed = parseAcceptedOfferMessage(unreadRideAccepted.message);
       setAcceptRideData(parsed);
@@ -127,10 +131,9 @@ const TruckDashboardScreen: React.FC = () => {
       return;
     }
 
-    // 2. Only check active service if NO notification is being shown and NO unread notification exists
     if (!showNotifModal && !unreadRideAccepted) {
       fetchActiveServiceForTruck()
-        .then((svc) => {
+        .then(svc => {
           if (svc) {
             navigation.dispatch(
               CommonActions.reset({
@@ -140,20 +143,33 @@ const TruckDashboardScreen: React.FC = () => {
             );
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [hasLoadedNotifications, notifLoading, notifications, showNotifModal, shownNotifId, navigation]);
 
-  // --- Reverse geocode addresses (from and to) when coords change
-  const { address: fromAddress } = useReverseGeocode(
-  acceptRideData?.fromCoordsNum?.[0] ?? 0,
-  acceptRideData?.fromCoordsNum?.[1] ?? 0
-);
-const { address: toAddress } = useReverseGeocode(
-  acceptRideData?.toCoordsNum?.[0] ?? 0,
-  acceptRideData?.toCoordsNum?.[1] ?? 0
-);
-
+  // --- Reverse geocode addresses asynchronously
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        if (!acceptRideData) return;
+        const from = acceptRideData.fromCoordsNum
+          ? await reverseGeocode({ latitude: acceptRideData.fromCoordsNum[0], longitude: acceptRideData.fromCoordsNum[1] })
+          : 'Unknown';
+        const to = acceptRideData.toCoordsNum
+          ? await reverseGeocode({ latitude: acceptRideData.toCoordsNum[0], longitude: acceptRideData.toCoordsNum[1] })
+          : 'Unknown';
+        if (!active) return;
+        setFromAddress(from);
+        setToAddress(to);
+      } catch {
+        if (!active) return;
+        setFromAddress('Unknown');
+        setToAddress('Unknown');
+      }
+    })();
+    return () => { active = false; };
+  }, [acceptRideData, reverseGeocode]);
 
   // --- Handle AcceptRideModal OK
   const handleNotifOk = useCallback(async () => {
@@ -161,7 +177,6 @@ const { address: toAddress } = useReverseGeocode(
       await markAsRead(shownNotifId);
     }
     setShowNotifModal(false);
-    // IMMEDIATELY check for active ride and navigate
     try {
       const svc = await fetchActiveServiceForTruck();
       if (svc) {
@@ -172,9 +187,7 @@ const { address: toAddress } = useReverseGeocode(
           })
         );
       }
-    } catch (e) {
-      // Optionally handle error
-    }
+    } catch { }
   }, [shownNotifId, markAsRead, navigation]);
 
   // --- Profile status check on focus
@@ -330,8 +343,8 @@ const { address: toAddress } = useReverseGeocode(
       <AcceptRideModal
         visible={showNotifModal}
         clientName={acceptRideData?.clientName || ''}
-        fromAddress={fromAddress || ''}
-        toAddress={toAddress || ''}
+        fromAddress={fromAddress}
+        toAddress={toAddress}
         offerPrice={acceptRideData?.offerPrice || ''}
         onOk={handleNotifOk}
       />

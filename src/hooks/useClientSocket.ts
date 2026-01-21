@@ -17,6 +17,7 @@ export interface UseClientSocketReturn {
   clearPayload: () => void;
   unreadCount: number;
   clearUnreadCount: () => void;
+  socket?: any;
 }
 
 export function useClientSocket(): UseClientSocketReturn {
@@ -76,6 +77,6 @@ export function useClientSocket(): UseClientSocketReturn {
       socket?.off('message:received', handleMessageReceived);
     };
   }, []);
+  return { payload, clearPayload, unreadCount, clearUnreadCount, socket };
 
-  return { payload, clearPayload, unreadCount, clearUnreadCount };
 }

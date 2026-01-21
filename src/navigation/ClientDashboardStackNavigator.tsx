@@ -1,6 +1,6 @@
 import React from 'react';
-import { Platform } from 'react-native';
-import { createStackNavigator, StackNavigationOptions } from '@react-navigation/stack';
+import { Platform, StatusBar } from 'react-native';
+import { createStackNavigator } from '@react-navigation/stack';
 
 import ClientDashboardScreen from '../screens/Client/Dashboard';
 import ClientConfirmRequestScreen from '../screens/Client/Dashboard/ConfirmRequest';
@@ -12,25 +12,22 @@ import { ClientStackParamList } from '../types';
 
 const Stack = createStackNavigator<ClientStackParamList>();
 
-const headerOptions = (title: string): StackNavigationOptions => ({
-  title,
-  headerStyle: {
-    backgroundColor: '#357EBD',
-    height: Platform.OS === 'ios' ? 100 : 80,
-  },
-  headerTitleStyle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: Platform.OS === 'ios' ? '600' : 'bold',
-  },
-  headerTintColor: '#fff',
-  headerTitleAlign: 'center',
-  headerBackTitle: '', // ✅ Hides the back text label
-});
-
 const ClientDashboardStackNavigator: React.FC = () => {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#357EBD',
+          paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight, // add margin top for Android
+        },
+        headerTitleStyle: {
+          color: '#fff',
+          fontWeight: 'bold',
+        },
+        headerTintColor: '#fff',
+        headerTitleAlign: 'center',
+      }}
+    >
       <Stack.Screen
         name="ClientDashboardScreen"
         component={ClientDashboardScreen}
@@ -54,7 +51,7 @@ const ClientDashboardStackNavigator: React.FC = () => {
       <Stack.Screen
         name="MessagingScreen"
         component={MessagingScreen}
-        options={{ headerShown: false }}
+        options={{ headerShown: false }} // show default header
       />
     </Stack.Navigator>
   );

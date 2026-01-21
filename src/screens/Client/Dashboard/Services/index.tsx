@@ -15,7 +15,7 @@ import CustomHeader from '../../../../components/CustomHeader';
 import OfferModal from '../../../../components/OfferModal';
 import ServicesList from './ServicesList';
 import { useLocation } from '../../../../hooks/useLocation';
-import useReverseGeocode from '../../../../hooks/useReverseGeocode';
+import { useReverseGeocode } from '../../../../hooks/useReverseGeocode';
 import {
   fetchActiveRequest,
   cancelRideRequest,
@@ -34,8 +34,13 @@ const ClientServicesScreen: React.FC = () => {
 
   const [request, setRequest] = useState<RideRequest | null>(null);
   const [loadingRequest, setLoadingRequest] = useState(true);
-  const [refetchOffers, setRefetchOffers] = useState<() => void>(() => () => {});
+  const [refetchOffers, setRefetchOffers] = useState<() => void>(() => () => { });
   const [isAccepting, setIsAccepting] = useState(false);
+
+  // Reverse geocode hook
+  const { reverseGeocode } = useReverseGeocode();
+  const [originAddress, setOriginAddress] = useState('Loading...');
+  const [destinationAddress, setDestinationAddress] = useState('Loading...');
 
   // 1. Load the single active ride request on mount
   useEffect(() => {
@@ -58,7 +63,7 @@ const ClientServicesScreen: React.FC = () => {
         setLoadingRequest(false);
       }
     })();
-  }, []); // navigation is stable
+  }, [navigation]);
 
   // 2. Show any location error
   useEffect(() => {
@@ -67,38 +72,58 @@ const ClientServicesScreen: React.FC = () => {
     }
   }, [locError]);
 
-  // 3. Prepare coords & reverse-geocode
+  // 3. Prepare coords
   const originCoords: LatLng = request
     ? {
-        latitude: request.origin_location.coordinates[1],
-        longitude: request.origin_location.coordinates[0],
-      }
+      latitude: request.origin_location.coordinates[1],
+      longitude: request.origin_location.coordinates[0],
+    }
     : { latitude: 0, longitude: 0 };
 
   const destCoords: LatLng = request
     ? {
-        latitude: request.dest_location.coordinates[1],
-        longitude: request.dest_location.coordinates[0],
-      }
+      latitude: request.dest_location.coordinates[1],
+      longitude: request.dest_location.coordinates[0],
+    }
     : { latitude: 0, longitude: 0 };
 
-  const { address: originAddress } = useReverseGeocode(originCoords.latitude, originCoords.longitude);
-  const { address: destinationAddress } = useReverseGeocode(destCoords.latitude, destCoords.longitude);
+  // 4. Fetch addresses asynchronously
+  useEffect(() => {
+    if (!request) return;
+    let active = true;
 
+    (async () => {
+      try {
+        const origin = await reverseGeocode(originCoords);
+        const dest = await reverseGeocode(destCoords);
+        if (!active) return;
+        setOriginAddress(origin);
+        setDestinationAddress(dest);
+      } catch {
+        if (!active) return;
+        setOriginAddress('Unknown location');
+        setDestinationAddress('Unknown location');
+      }
+    })();
 
-  // 4. Always calculate distance hook-unconditionally
+    return () => {
+      active = false;
+    };
+  }, [request, originCoords, destCoords, reverseGeocode]);
+
+  // 5. Always calculate distance
   const distanceMiles = useMemo(() => {
     const m = getDistance(originCoords, destCoords);
     return (m / 1609.344).toFixed(2);
   }, [originCoords, destCoords]);
 
-  // 5. Counter-offer modal state
+  // 6. Counter-offer modal state
   const [showModal, setShowModal] = useState(false);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [counterOfferPrice, setCounterOfferPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 6. ACCEPT OFFER handler
+  // 7. ACCEPT OFFER handler
   const handleAcceptOffer = useCallback(
     async (offerId: string) => {
       if (!request) return;
@@ -121,14 +146,14 @@ const ClientServicesScreen: React.FC = () => {
     [navigation, request]
   );
 
-  // 7. OPEN “COUNTER OFFER” modal
+  // 8. OPEN “COUNTER OFFER” modal
   const onCounterPress = useCallback((offerId: string) => {
     setSelectedOfferId(offerId);
     setCounterOfferPrice('');
     setShowModal(true);
   }, []);
 
-  // 8. CANCEL RIDE REQUEST
+  // 9. CANCEL RIDE REQUEST
   const handleCancelRequest = useCallback(() => {
     if (!request) return;
     Alert.alert('Cancel Ride Request', 'Are you sure?', [
@@ -152,7 +177,7 @@ const ClientServicesScreen: React.FC = () => {
     ]);
   }, [navigation, request]);
 
-  // 9. SUBMIT COUNTER-OFFER
+  // 10. SUBMIT COUNTER-OFFER
   const submitCounterOffer = useCallback(async () => {
     if (!request || !selectedOfferId) return;
     setIsSubmitting(true);
@@ -169,7 +194,7 @@ const ClientServicesScreen: React.FC = () => {
     }
   }, [request, selectedOfferId, counterOfferPrice, refetchOffers]);
 
-  // 10. Show loading spinner until ready
+  // 11. Show loading spinner until ready
   if (loadingRequest || !request || !userCoords || locLoading) {
     return (
       <View style={styles.loadingContainer}>

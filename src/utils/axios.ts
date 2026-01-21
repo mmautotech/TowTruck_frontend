@@ -8,9 +8,9 @@ import axios, {
 } from 'axios';
 import { SignoutUser } from './Signout_User';
 
-const DEV_API  = process.env.EXPO_PUBLIC_API_URL_DEV  ?? 'http://192.168.18.69:5000/api';
-const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.18.69:5000/api';
-const baseURL  = __DEV__ ? DEV_API : PROD_API;
+const DEV_API = process.env.EXPO_PUBLIC_API_URL_DEV ?? 'http://192.168.18.84:5000/api';
+const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.18.84:5000/api';
+const baseURL = __DEV__ ? DEV_API : PROD_API;
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL,
@@ -52,8 +52,8 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalReq = error.config as AxiosRequestConfig & { _retry?: boolean };
-    const status      = error.response?.status;
-    const url         = originalReq.url || '';
+    const status = error.response?.status;
+    const url = originalReq.url || '';
 
     // ** ONLY** auto‐signout on 401 for *protected* endpoints.
     // Skip signout if the call was to auth or T&C endpoints:

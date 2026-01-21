@@ -1,5 +1,3 @@
-// src/screens/ClientDashboardScreen/styles.ts
-
 import { StyleSheet } from 'react-native';
 import { wp, hp } from '../../../utils/responsive';
 
@@ -77,5 +75,38 @@ export default StyleSheet.create({
     color: '#fff',
     fontSize: wp(4.2),
     fontWeight: 'bold',
+  },
+
+  // -------------------- Autocomplete Suggestions --------------------
+  suggestionsList: {
+    maxHeight: hp(25),
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: wp(2),
+    marginBottom: hp(1.5),
+    zIndex: 10, // ensures dropdown overlays other components
+  },
+  suggestionText: {
+    paddingVertical: hp(1.2),
+    paddingHorizontal: wp(3),
+    fontSize: wp(3.8),
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+
+  // -------------------- Distance Box --------------------
+  distanceBox: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: '#fff',
+    padding: wp(2),
+    borderRadius: wp(2),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3, // Android shadow
   },
 });

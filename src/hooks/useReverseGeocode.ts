@@ -1,53 +1,56 @@
-import { useState, useEffect, useRef } from 'react';
-import * as Location from 'expo-location';
+import { useState, useCallback } from 'react';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-export default function useReverseGeocode(lat: number, lng: number): { address: string } {
-  const [address, setAddress] = useState('');
-  const lastCoords = useRef<{ lat: number; lng: number } | null>(null);
+type Coords = {
+  latitude: number;
+  longitude: number;
+};
 
-  useEffect(() => {
-    if (lat === 0 && lng === 0) {
-      setAddress('');
-      lastCoords.current = null;
+const extra =
+  Constants.expoConfig?.extra ??
+  (Constants as any).manifest?.extra;
+
+const GOOGLE_API_KEY =
+  Platform.OS === 'ios'
+    ? extra?.iosMapsApiKey
+    : extra?.androidMapsApiKey;
+
+export const useReverseGeocode = () => {
+  const [address, setAddress] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const reverseGeocode = useCallback(async (coords?: Coords) => {
+    if (!coords) return;
+
+    const { latitude, longitude } = coords;
+
+    if (!GOOGLE_API_KEY) {
+      console.warn('Google Maps API key is missing');
+      setAddress('Unknown location');
       return;
     }
 
-    if (lastCoords.current?.lat === lat && lastCoords.current?.lng === lng) return;
-    lastCoords.current = { lat, lng };
+    setLoading(true);
 
-    let isActive = true;
+    try {
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
+      );
+      const data = await res.json();
 
-    (async () => {
-      try {
-        const [place] = await Location.reverseGeocodeAsync({
-          latitude: lat,
-          longitude: lng,
-        });
-
-        if (!isActive || !place) {
-          setAddress('');
-          return;
-        }
-
-        const {
-          name = '',
-          street = '',
-          city = '',
-          region = '',
-          country = '',
-        } = place;
-
-        const parts = [name, street, city, region, country].filter(Boolean);
-        setAddress(parts.join(', '));
-      } catch {
-        if (isActive) setAddress('');
+      if (data.status === 'OK' && data.results?.length > 0) {
+        setAddress(data.results[0].formatted_address);
+      } else {
+        setAddress('Unknown location');
       }
-    })();
+    } catch (err) {
+      console.warn('Reverse geocoding failed:', err);
+      setAddress('Unknown location');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    return () => {
-      isActive = false;
-    };
-  }, [lat, lng]);
-
-  return { address };
-}
+  return { address, loading, reverseGeocode };
+};

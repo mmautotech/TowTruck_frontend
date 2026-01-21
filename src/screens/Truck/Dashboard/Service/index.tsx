@@ -18,7 +18,7 @@ import { fetchActiveServiceForTruck } from '../../../../api/truck';
 import { CompleteRide, reopenRideRequest } from '../../../../api/rideRequest';
 import type { ServiceResponse } from '../../../../api/types';
 import HeaderMenuButton from '../../../../components/HeaderMenuButton';
-import useReverseGeocode from '../../../../hooks/useReverseGeocode';
+import { useReverseGeocode } from '../../../../hooks/useReverseGeocode';
 import { useLocation } from '../../../../hooks/useLocation';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { TruckStackParamList } from '../../../../types';
@@ -89,7 +89,7 @@ const TruckServiceScreen: React.FC = () => {
           setShownNotificationId(notifToShow._id);
           try {
             await markAsRead(notifToShow._id); // Marks notification as read
-          } catch {}
+          } catch { }
           refreshNotifications();
           navigation.dispatch(
             CommonActions.reset({
@@ -127,7 +127,7 @@ const TruckServiceScreen: React.FC = () => {
         { shouldPlay: true }
       );
       await sound.playAsync();
-    } catch {}
+    } catch { }
   };
 
   // Centralized loader: if no service, auto-navigate away
@@ -357,7 +357,7 @@ const TruckServiceScreen: React.FC = () => {
           }}
           originCoords={originCoords}
           destCoords={destCoords}
-          onMapPress={() => {}}
+          onMapPress={() => { }}
           currentCoords={currentCoords}
           bottomOffset={panelHeight}
           autoFitRoute={!isExpanded}
