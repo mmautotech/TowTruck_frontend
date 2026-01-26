@@ -5,12 +5,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+
 } from 'react-native';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { LatLng } from 'react-native-maps';
 import { getDistance } from 'geolib';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomHeader from '../../../../components/CustomHeader';
 import OfferModal from '../../../../components/OfferModal';
 import ServicesList from './ServicesList';
@@ -37,12 +38,25 @@ const ClientServicesScreen: React.FC = () => {
   const [refetchOffers, setRefetchOffers] = useState<() => void>(() => () => { });
   const [isAccepting, setIsAccepting] = useState(false);
 
-  // Reverse geocode hook
-  const { reverseGeocode } = useReverseGeocode();
+  const { reverseGeocodeBatch, reverseGeocode } = useReverseGeocode();
+
+  const originCoords: LatLng = request
+    ? {
+      latitude: request.origin_location.coordinates[1],
+      longitude: request.origin_location.coordinates[0],
+    }
+    : { latitude: 0, longitude: 0 };
+
+  const destCoords: LatLng = request
+    ? {
+      latitude: request.dest_location.coordinates[1],
+      longitude: request.dest_location.coordinates[0],
+    }
+    : { latitude: 0, longitude: 0 };
+
   const [originAddress, setOriginAddress] = useState('Loading...');
   const [destinationAddress, setDestinationAddress] = useState('Loading...');
 
-  // 1. Load the single active ride request on mount
   useEffect(() => {
     (async () => {
       try {
@@ -65,38 +79,26 @@ const ClientServicesScreen: React.FC = () => {
     })();
   }, [navigation]);
 
-  // 2. Show any location error
   useEffect(() => {
-    if (locError) {
-      Alert.alert('Location Error', locError);
-    }
+    if (locError) Alert.alert('Location Error', locError);
   }, [locError]);
 
-  // 3. Prepare coords
-  const originCoords: LatLng = request
-    ? {
-      latitude: request.origin_location.coordinates[1],
-      longitude: request.origin_location.coordinates[0],
-    }
-    : { latitude: 0, longitude: 0 };
-
-  const destCoords: LatLng = request
-    ? {
-      latitude: request.dest_location.coordinates[1],
-      longitude: request.dest_location.coordinates[0],
-    }
-    : { latitude: 0, longitude: 0 };
-
-  // 4. Fetch addresses asynchronously
   useEffect(() => {
     if (!request) return;
     let active = true;
 
+    setOriginAddress('Loading...');
+    setDestinationAddress('Loading...');
+
     (async () => {
       try {
-        const origin = await reverseGeocode(originCoords);
-        const dest = await reverseGeocode(destCoords);
+        const [origin, dest] = await Promise.all([
+          reverseGeocode(originCoords),
+          reverseGeocode(destCoords),
+        ]);
+
         if (!active) return;
+
         setOriginAddress(origin);
         setDestinationAddress(dest);
       } catch {
@@ -106,24 +108,20 @@ const ClientServicesScreen: React.FC = () => {
       }
     })();
 
-    return () => {
-      active = false;
-    };
-  }, [request, originCoords, destCoords, reverseGeocode]);
+    return () => { active = false; };
+  }, [request, originCoords, destCoords, reverseGeocode, reverseGeocodeBatch]);
 
-  // 5. Always calculate distance
+
   const distanceMiles = useMemo(() => {
     const m = getDistance(originCoords, destCoords);
     return (m / 1609.344).toFixed(2);
   }, [originCoords, destCoords]);
 
-  // 6. Counter-offer modal state
   const [showModal, setShowModal] = useState(false);
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
   const [counterOfferPrice, setCounterOfferPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 7. ACCEPT OFFER handler
   const handleAcceptOffer = useCallback(
     async (offerId: string) => {
       if (!request) return;
@@ -146,14 +144,12 @@ const ClientServicesScreen: React.FC = () => {
     [navigation, request]
   );
 
-  // 8. OPEN “COUNTER OFFER” modal
   const onCounterPress = useCallback((offerId: string) => {
     setSelectedOfferId(offerId);
     setCounterOfferPrice('');
     setShowModal(true);
   }, []);
 
-  // 9. CANCEL RIDE REQUEST
   const handleCancelRequest = useCallback(() => {
     if (!request) return;
     Alert.alert('Cancel Ride Request', 'Are you sure?', [
@@ -177,7 +173,6 @@ const ClientServicesScreen: React.FC = () => {
     ]);
   }, [navigation, request]);
 
-  // 10. SUBMIT COUNTER-OFFER
   const submitCounterOffer = useCallback(async () => {
     if (!request || !selectedOfferId) return;
     setIsSubmitting(true);
@@ -194,21 +189,19 @@ const ClientServicesScreen: React.FC = () => {
     }
   }, [request, selectedOfferId, counterOfferPrice, refetchOffers]);
 
-  // 11. Show loading spinner until ready
   if (loadingRequest || !request || !userCoords || locLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#357EBD" />
         <Text style={styles.loadingText}>Loading Tow Truck Offers...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <CustomHeader title="Available Services" />
 
-      {/* Vehicle + Request Details */}
       <View style={styles.requestDetailsCompact}>
         <Text style={styles.requestHeader}>Your Vehicle Details</Text>
         <Text style={styles.compactLine}>
@@ -237,7 +230,6 @@ const ClientServicesScreen: React.FC = () => {
         </Text>
       </View>
 
-      {/* Offers List */}
       <ServicesList
         requestId={request._id}
         originCoords={originCoords}
@@ -248,7 +240,6 @@ const ClientServicesScreen: React.FC = () => {
         isAccepting={isAccepting}
       />
 
-      {/* Cancel Request button */}
       <TouchableOpacity
         style={styles.cancelButton}
         onPress={handleCancelRequest}
@@ -257,7 +248,6 @@ const ClientServicesScreen: React.FC = () => {
         <Text style={styles.cancelText}>Cancel Request</Text>
       </TouchableOpacity>
 
-      {/* Counter Offer Modal */}
       <OfferModal
         isVisible={showModal}
         onClose={() => setShowModal(false)}
@@ -269,7 +259,7 @@ const ClientServicesScreen: React.FC = () => {
         showTimeInputs={false}
         title="Make a Counter Offer"
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

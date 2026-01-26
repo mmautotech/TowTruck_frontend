@@ -19,7 +19,7 @@ const SOCKET_URL = (() => {
     }
   }
   // fallback (only if nothing else works)
-  return 'http://192.168.18.84:5000';
+  return 'https://towly-backend.onrender.com/api';
 })();
 
 interface AuthPayload {

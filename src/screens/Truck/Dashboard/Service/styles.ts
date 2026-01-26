@@ -193,4 +193,5 @@ export default StyleSheet.create({
     marginLeft: wp(1.5),
   },
 
+
 });

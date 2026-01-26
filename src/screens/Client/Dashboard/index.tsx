@@ -19,49 +19,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions, useNavigation, useFocusEffect } from '@react-navigation/native';
 import MapView, { Marker, Polyline, MapPressEvent, LatLng, Region } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
-import Constants from 'expo-constants';
-import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { KeyboardAwareFlatList } from 'react-native-keyboard-aware-scroll-view';
+import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 
 import styles from './styles';
 import HeaderMenuButton from '../../../components/HeaderMenuButton';
 import IncompleteProfileMessage from '../../../components/IncompleteProfileMessage';
-
-import type { StackNavigationProp } from '@react-navigation/stack';
-import type { ClientStackParamList } from '../../../types';
 import { fetchActiveRequest, createRideRequest, CreateRequestPayload } from '../../../api/rideRequest';
 import { fetchProfileStatus } from '../../../api/Profile';
 import { useLocation } from '../../../hooks/useLocation';
 import { SignoutUser } from '../../../utils/Signout_User';
 import { useReverseGeocode } from '../../../hooks/useReverseGeocode';
+import { fetchGoogleApiKey } from '../../../api/googleApi';
+
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { ClientStackParamList } from '../../../types';
 
 type NavProp = StackNavigationProp<ClientStackParamList, 'ClientDashboardScreen'>;
 
+// Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-const GOOGLE_API_KEY =
-  Platform.OS === 'ios'
-    ? Constants.expoConfig?.extra?.iosMapsApiKey
-    : Constants.expoConfig?.extra?.androidMapsApiKey;
 
 const ClientDashboardScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const mapRef = useRef<MapView>(null);
 
+  // Profile
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
 
+  // Location
   const { coords, loading: locLoading } = useLocation();
   const { reverseGeocode, loading: geoLoading } = useReverseGeocode();
-
   const [region, setRegion] = useState<Region | null>(null);
   const [originCoords, setOriginCoords] = useState<LatLng | null>(null);
   const [destCoords, setDestCoords] = useState<LatLng | null>(null);
   const [originAddress, setOriginAddress] = useState('');
   const [destAddress, setDestAddress] = useState('');
 
+  // Form
   const [pickupDate, setPickupDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [vehicleMakeModel, setVehicleMakeModel] = useState('');
@@ -72,29 +70,42 @@ const ClientDashboardScreen: React.FC = () => {
   const [loadedStatus, setLoadedStatus] = useState<'Unloaded' | 'Loaded'>('Unloaded');
   const [wheelsCategory, setWheelsCategory] = useState<'Wheels Are Rolling' | 'Wheels Are Not Rolling'>('Wheels Are Rolling');
   const [submitting, setSubmitting] = useState(false);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
+  // Map & Routes
   const [routes, setRoutes] = useState<{ coordinates: LatLng[]; distance: number; duration: number }[]>([]);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [distance, setDistance] = useState<number | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
 
+  // Google API key
+  const [googleApiKey, setGoogleApiKey] = useState<string | null>(null);
+  const [loadingApiKey, setLoadingApiKey] = useState(true);
+
   // Keyboard animation
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   useEffect(() => {
-    const onShow = () => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardVisible(true);
-    };
-    const onHide = () => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardVisible(false);
-    };
+    const onShow = () => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setKeyboardVisible(true); };
+    const onHide = () => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setKeyboardVisible(false); };
     const showSub = Keyboard.addListener('keyboardDidShow', onShow);
     const hideSub = Keyboard.addListener('keyboardDidHide', onHide);
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
+  // Fetch Google API key
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const key = await fetchGoogleApiKey();
+        if (active) setGoogleApiKey(key);
+      } catch (err: any) {
+        Alert.alert('Error', 'Failed to load Google API key. Please try again.');
+        console.error('Google API key fetch error:', err.message || err);
+      } finally {
+        if (active) setLoadingApiKey(false);
+      }
+    })();
+    return () => { active = false; };
   }, []);
 
   // Check profile
@@ -148,18 +159,13 @@ const ClientDashboardScreen: React.FC = () => {
   // Set initial region
   useEffect(() => {
     if (!coords) return;
-    setRegion({
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
+    setRegion({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 });
   }, [coords]);
 
   const mapFlex = keyboardVisible ? 0.4 : 0.7;
   const formFlex = keyboardVisible ? 0.6 : 0.3;
 
-  // Map press handler
+  // Map interactions
   const handleMapPress = async (e: MapPressEvent) => {
     const c = e.nativeEvent.coordinate;
     const address = await reverseGeocode(c);
@@ -177,17 +183,18 @@ const ClientDashboardScreen: React.FC = () => {
     mapRef.current?.animateToRegion({ ...c, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
   };
 
-  // Drag end handlers
   const handleOriginDragEnd = async (e: any) => {
     const c = e.nativeEvent.coordinate;
     setOriginCoords(c);
     setOriginAddress(await reverseGeocode(c));
+    if (destCoords) mapRef.current?.fitToCoordinates([c, destCoords], { edgePadding: { top: 50, bottom: 50, left: 50, right: 50 }, animated: true });
   };
 
   const handleDestDragEnd = async (e: any) => {
     const c = e.nativeEvent.coordinate;
     setDestCoords(c);
     setDestAddress(await reverseGeocode(c));
+    if (originCoords) mapRef.current?.fitToCoordinates([originCoords, c], { edgePadding: { top: 50, bottom: 50, left: 50, right: 50 }, animated: true });
   };
 
   const handleDateChange = (_: DateTimePickerEvent, d?: Date) => {
@@ -198,7 +205,7 @@ const ClientDashboardScreen: React.FC = () => {
   const handleSubmit = async () => {
     if (!originCoords || !destCoords) return Alert.alert('Missing Info', 'Set both origin and destination.');
     if (!vehicleMakeModel || !regNumber || !year) return Alert.alert('Missing Info', 'All fields are required.');
-    if (!GOOGLE_API_KEY) return Alert.alert('Error', 'Google API key is missing.');
+    if (!googleApiKey) return Alert.alert('Error', 'Google API key is missing.');
 
     const [make, ...rest] = vehicleMakeModel.trim().split(' ');
     const model = rest.join(' ') || 'UNKNOWN';
@@ -230,56 +237,114 @@ const ClientDashboardScreen: React.FC = () => {
       } else {
         Alert.alert('API Error', err.response?.data?.message || err.message || 'Submission failed.');
       }
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   const renderFormHeader = () => (
     <>
       <Text style={styles.hintText}>Enter origin and destination directly</Text>
 
-      {/* Origin */}
-      <GooglePlacesAutocomplete
-        placeholder="From"
-        fetchDetails
-        onPress={async (data, details = null) => {
-          if (!details) return;
-          const coords: LatLng = {
-            latitude: details.geometry.location.lat,
-            longitude: details.geometry.location.lng,
-          };
-          setOriginCoords(coords);
-          setOriginAddress(data.description);
-          mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
-        }}
-        query={{ key: GOOGLE_API_KEY || '', language: 'en' }}
-        styles={{ textInput: styles.input, container: { flex: 0, marginBottom: 10 }, listView: { backgroundColor: '#fff' } }}
-        textInputProps={{ value: originAddress, onChangeText: setOriginAddress }}
-        nearbyPlacesAPI="GooglePlacesSearch"
-        debounce={300}
-      />
+      {googleApiKey && (
+        <>
+          {/* Origin Input with Current Location Button */}
+          {/* Origin Input with Current Location Button */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            {/* Input */}
+            <GooglePlacesAutocomplete
+              placeholder="From"
+              fetchDetails
+              onPress={async (data, details = null) => {
+                if (!details) return;
+                const coords: LatLng = {
+                  latitude: details.geometry.location.lat,
+                  longitude: details.geometry.location.lng,
+                };
+                setOriginCoords(coords);
+                setOriginAddress(data.description);
 
-      {/* Destination */}
-      <GooglePlacesAutocomplete
-        placeholder="To"
-        fetchDetails
-        onPress={async (data, details = null) => {
-          if (!details) return;
-          const coords: LatLng = {
-            latitude: details.geometry.location.lat,
-            longitude: details.geometry.location.lng,
-          };
-          setDestCoords(coords);
-          setDestAddress(data.description);
-          mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
-        }}
-        query={{ key: GOOGLE_API_KEY || '', language: 'en' }}
-        styles={{ textInput: styles.input, container: { flex: 0, marginBottom: 10 }, listView: { backgroundColor: '#fff' } }}
-        textInputProps={{ value: destAddress, onChangeText: setDestAddress }}
-        nearbyPlacesAPI="GooglePlacesSearch"
-        debounce={300}
-      />
+                if (destCoords) {
+                  mapRef.current?.fitToCoordinates([coords, destCoords], {
+                    edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+                    animated: true,
+                  });
+                } else {
+                  mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
+                }
+              }}
+              query={{ key: googleApiKey!, language: 'en' }}
+              styles={{
+                textInput: {
+                  ...styles.input,
+                  height: 48,           // ensure same height as button
+                  paddingVertical: 0,   // remove vertical padding to avoid extra space
+                },
+                container: { flex: 1 },
+                listView: { backgroundColor: '#fff' },
+              }}
+              textInputProps={{ value: originAddress, onChangeText: setOriginAddress }}
+              nearbyPlacesAPI="GooglePlacesSearch"
+              debounce={300}
+            />
+
+            {/* Current Location Button */}
+            <TouchableOpacity
+              style={{
+                marginLeft: 8,
+                height: 48,              // match input height
+                paddingHorizontal: 12,
+                backgroundColor: '#357EBD',
+                borderRadius: 5,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onPress={async () => {
+                if (!coords) {
+                  Alert.alert('Location not ready', 'Fetching your current location, please wait.');
+                  return;
+                }
+                setOriginCoords({ latitude: coords.latitude, longitude: coords.longitude });
+                const address = await reverseGeocode(coords);
+                setOriginAddress(address);
+
+                if (destCoords) {
+                  mapRef.current?.fitToCoordinates([coords, destCoords], {
+                    edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+                    animated: true,
+                  });
+                } else {
+                  mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
+                }
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Use</Text>
+            </TouchableOpacity>
+          </View>
+
+
+          {/* Destination Input */}
+          <GooglePlacesAutocomplete
+            placeholder="To"
+            fetchDetails
+            onPress={async (data, details = null) => {
+              if (!details) return;
+              const coords: LatLng = { latitude: details.geometry.location.lat, longitude: details.geometry.location.lng };
+              setDestCoords(coords);
+              setDestAddress(data.description);
+              if (originCoords) {
+                mapRef.current?.fitToCoordinates([originCoords, coords], { edgePadding: { top: 50, bottom: 50, left: 50, right: 50 }, animated: true });
+              } else {
+                mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
+              }
+            }}
+            query={{ key: googleApiKey, language: 'en' }}
+            styles={{ textInput: styles.input, container: { flex: 0, marginBottom: 10 }, listView: { backgroundColor: '#fff' } }}
+            textInputProps={{ value: destAddress, onChangeText: setDestAddress }}
+            nearbyPlacesAPI="GooglePlacesSearch"
+            debounce={300}
+          />
+        </>
+      )}
+
 
       <Text style={styles.label}>Pickup Date</Text>
       <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
@@ -332,7 +397,7 @@ const ClientDashboardScreen: React.FC = () => {
     </TouchableOpacity>
   );
 
-  if (checkingProfile || profileComplete === null || locLoading || !region || geoLoading) {
+  if (checkingProfile || profileComplete === null || locLoading || !region || geoLoading || loadingApiKey) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#357EBD" />
@@ -351,29 +416,14 @@ const ClientDashboardScreen: React.FC = () => {
         {/* Map */}
         <View style={{ flex: mapFlex }}>
           <MapView ref={mapRef} style={{ flex: 1 }} region={region} onPress={handleMapPress}>
-            {originCoords && (
-              <Marker
-                coordinate={originCoords}
-                title="From"
-                pinColor="green"
-                draggable
-                onDragEnd={handleOriginDragEnd}
-              />
-            )}
-            {destCoords && (
-              <Marker
-                coordinate={destCoords}
-                title="To"
-                pinColor="red"
-                draggable
-                onDragEnd={handleDestDragEnd}
-              />
-            )}
-            {originCoords && destCoords && routes.length === 0 && GOOGLE_API_KEY && (
+            {originCoords && <Marker coordinate={originCoords} title="From" pinColor="red" draggable onDragEnd={handleOriginDragEnd} />}
+            {destCoords && <Marker coordinate={destCoords} title="To" pinColor="green" draggable onDragEnd={handleDestDragEnd} />}
+
+            {originCoords && destCoords && googleApiKey && (
               <MapViewDirections
                 origin={originCoords}
                 destination={destCoords}
-                apikey={GOOGLE_API_KEY}
+                apikey={googleApiKey}
                 strokeWidth={4}
                 strokeColor="#357EBD"
                 mode="DRIVING"
@@ -383,17 +433,17 @@ const ClientDashboardScreen: React.FC = () => {
                   setSelectedRouteIndex(0);
                   setDistance(mainRoute.distance);
                   setDuration(mainRoute.duration);
-                  mapRef.current?.fitToCoordinates(mainRoute.coordinates, { edgePadding: { top: 50, bottom: 50, left: 50, right: 50 } });
+
+                  mapRef.current?.fitToCoordinates(result.coordinates, {
+                    edgePadding: { top: 50, bottom: 50, left: 50, right: 50 },
+                    animated: true,
+                  });
                 }}
               />
             )}
+
             {routes.map((r, i) => (
-              <Polyline
-                key={i}
-                coordinates={r.coordinates}
-                strokeWidth={i === selectedRouteIndex ? 6 : 4}
-                strokeColor={i === selectedRouteIndex ? '#357EBD' : '#AAA'}
-              />
+              <Polyline key={i} coordinates={r.coordinates} strokeWidth={i === selectedRouteIndex ? 6 : 4} strokeColor={i === selectedRouteIndex ? '#357EBD' : '#AAA'} />
             ))}
           </MapView>
 
@@ -403,7 +453,6 @@ const ClientDashboardScreen: React.FC = () => {
               <Text>ETA: {Math.ceil(duration)} mins</Text>
             </View>
           )}
-
         </View>
 
         {/* Form */}

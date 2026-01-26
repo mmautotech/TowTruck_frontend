@@ -1,24 +1,31 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import useReverseGeocode from '../hooks/useReverseGeocode';
 import { wp, hp } from '../utils/responsive';
 
 type Props = {
-  from: [number, number]; // [lng, lat]
-  to: [number, number];   // [lng, lat]
+  from: [number, number];
+  to: [number, number];
   date: string;
   price: string;
   status: string;
+  originAddress: string;
+  destinationAddress: string;
   dotColors?: {
     pickup: string;
     dropoff: string;
   };
 };
 
-const HistoryCard: React.FC<Props> = ({ from, to, date, price, status, dotColors }) => {
-  const { address: fromAddress } = useReverseGeocode(from[1], from[0]); // lat, lng
-  const { address: toAddress } = useReverseGeocode(to[1], to[0]);       // lat, lng
-
+const HistoryCard: React.FC<Props> = ({
+  from,
+  to,
+  date,
+  price,
+  status,
+  originAddress,
+  destinationAddress,
+  dotColors,
+}) => {
   return (
     <View style={styles.card}>
       <View style={styles.locations}>
@@ -28,12 +35,8 @@ const HistoryCard: React.FC<Props> = ({ from, to, date, price, status, dotColors
           <View style={[styles.dot, { backgroundColor: dotColors?.dropoff || '#4CAF50' }]} />
         </View>
         <View>
-          <Text style={styles.locationText}>
-            {fromAddress || 'Loading pickup...'}
-          </Text>
-          <Text style={styles.locationText}>
-            {toAddress || 'Loading dropoff...'}
-          </Text>
+          <Text style={styles.locationText}>{originAddress}</Text>
+          <Text style={styles.locationText}>{destinationAddress}</Text>
         </View>
       </View>
       <View style={styles.rightBlock}>

@@ -1,3 +1,4 @@
+// TruckServiceScreen.tsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -6,13 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  Dimensions,
   TextInput,
 } from 'react-native';
 import { getDistance } from 'geolib';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Audio } from 'expo-av';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchActiveServiceForTruck } from '../../../../api/truck';
 import { CompleteRide, reopenRideRequest } from '../../../../api/rideRequest';
@@ -28,24 +29,23 @@ import ConfirmModal from '../../../../components/ConfirmModal';
 import Map from '../../../../components/Map';
 import UniversalMessageModal from '../../../../components/UniversalMessageModal';
 import { useNotifications } from '../../../../hooks/useNotifications';
-import { wp, hp } from '../../../../utils/responsive';
+import { hp } from '../../../../utils/responsive';
+import { fetchGoogleApiKey } from '../../../../api/googleApi';
 import styles from './styles';
 
-const EXPANDED_HEIGHT = hp(60); // 60% of screen height
-const COLLAPSED_HEIGHT = hp(5); // approx. 40px on standard ~800px screen height
+
+const EXPANDED_HEIGHT = hp(60);
+const COLLAPSED_HEIGHT = hp(5);
 
 type NavProp = StackNavigationProp<TruckStackParamList, 'TruckServiceScreen'>;
 
 const TruckServiceScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const { coords: currentCoords } = useLocation();
-
-  // Animation
   const slideAnim = useRef(new Animated.Value(EXPANDED_HEIGHT)).current;
   const [isExpanded, setIsExpanded] = useState(true);
   const [panelHeight, setPanelHeight] = useState(EXPANDED_HEIGHT);
 
-  // State
   const [service, setService] = useState<ServiceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -54,7 +54,6 @@ const TruckServiceScreen: React.FC = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // --- Notifications ---
   const { notifications, refresh: refreshNotifications, markAsRead } = useNotifications();
   const [universalModal, setUniversalModal] = useState<{
     visible: boolean;
@@ -63,63 +62,45 @@ const TruckServiceScreen: React.FC = () => {
     message: string;
     onClose?: () => void;
   }>({ visible: false, message: '' });
-  const [shownNotificationId, setShownNotificationId] = useState<string | null>(null);
 
-  // Effect: show notification for current ride, only once per notification
+  const [googleApiKey, setGoogleApiKey] = useState<string | null>(null);
+  const { reverseGeocode } = useReverseGeocode();
+  const [originAddr, setOriginAddr] = useState<string>('Unknown Location');
+  const [destAddr, setDestAddr] = useState<string>('Unknown Location');
+
+  const originLat = service?.origin_location?.coordinates?.[1];
+  const originLng = service?.origin_location?.coordinates?.[0];
+  const destLat = service?.dest_location?.coordinates?.[1];
+  const destLng = service?.dest_location?.coordinates?.[0];
+
+  const originCoords = originLat != null && originLng != null ? { latitude: originLat, longitude: originLng } : null;
+  const destCoords = destLat != null && destLng != null ? { latitude: destLat, longitude: destLng } : null;
+
+  // Reverse geocode origin
   useEffect(() => {
-    if (!service?._id) return;
-    const notifToShow = notifications
-      .filter(
-        n =>
-          (n.type === 'rideReopened' || n.type === 'rideCancelled') &&
-          n.ride_id === service._id &&
-          !n.read &&
-          n._id !== shownNotificationId
-      )
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-
-    if (notifToShow) {
-      setUniversalModal({
-        visible: true,
-        type: notifToShow.type as 'rideReopened' | 'rideCancelled',
-        title: notifToShow.type === 'rideReopened' ? 'Ride Reopened' : 'Ride Cancelled',
-        message: notifToShow.message,
-        onClose: async () => {
-          setUniversalModal({ visible: false, message: '' });
-          setShownNotificationId(notifToShow._id);
-          try {
-            await markAsRead(notifToShow._id); // Marks notification as read
-          } catch { }
-          refreshNotifications();
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'TruckDashboardScreen' }],
-            })
-          );
-        },
-      });
+    if (originCoords) {
+      reverseGeocode(originCoords)
+        .then(addr => setOriginAddr(addr || `${originCoords.latitude.toFixed(3)}, ${originCoords.longitude.toFixed(3)}`))
+        .catch(() => setOriginAddr(`${originCoords.latitude.toFixed(3)}, ${originCoords.longitude.toFixed(3)}`));
     }
-  }, [notifications, service?._id, shownNotificationId, refreshNotifications, navigation, markAsRead]);
+  }, [originCoords, reverseGeocode]);
 
-  // Keep panelHeight in sync with animation
+  // Reverse geocode destination
   useEffect(() => {
-    const id = slideAnim.addListener(({ value }) => setPanelHeight(value));
-    return () => slideAnim.removeListener(id);
-  }, [slideAnim]);
+    if (destCoords) {
+      reverseGeocode(destCoords)
+        .then(addr => setDestAddr(addr || `${destCoords.latitude.toFixed(3)}, ${destCoords.longitude.toFixed(3)}`))
+        .catch(() => setDestAddr(`${destCoords.latitude.toFixed(3)}, ${destCoords.longitude.toFixed(3)}`));
+    }
+  }, [destCoords, reverseGeocode]);
 
-  // Map helpers
-  const originLat = service?.origin_location?.coordinates?.[1] ?? 0;
-  const originLng = service?.origin_location?.coordinates?.[0] ?? 0;
-  const destLat = service?.dest_location?.coordinates?.[1] ?? 0;
-  const destLng = service?.dest_location?.coordinates?.[0] ?? 0;
-  const originCoords = originLat && originLng ? { latitude: originLat, longitude: originLng } : null;
-  const destCoords = destLat && destLng ? { latitude: destLat, longitude: destLng } : null;
+  // Fetch Google API Key once
+  useEffect(() => {
+    fetchGoogleApiKey()
+      .then(key => setGoogleApiKey(key))
+      .catch(err => console.error('Failed to fetch Google API key:', err));
+  }, []);
 
-  const { address: originAddress } = useReverseGeocode(originLat, originLng);
-  const { address: destinationAddress } = useReverseGeocode(destLat, destLng);
-
-  // Play sound on unread message
   const playMessageSound = async () => {
     try {
       const { sound } = await Audio.Sound.createAsync(
@@ -130,19 +111,16 @@ const TruckServiceScreen: React.FC = () => {
     } catch { }
   };
 
-  // Centralized loader: if no service, auto-navigate away
   const loadService = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
       const svc = await fetchActiveServiceForTruck();
       if (!svc) {
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'TruckDashboardScreen' }],
-          })
-        );
+        navigation.dispatch(CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'TruckDashboardScreen' }],
+        }));
         return;
       }
       setService(svc);
@@ -153,7 +131,6 @@ const TruckServiceScreen: React.FC = () => {
     }
   }, [navigation]);
 
-  // Socket and chat listeners
   useEffect(() => {
     loadService();
     socket?.on('service-updated', loadService);
@@ -168,14 +145,12 @@ const TruckServiceScreen: React.FC = () => {
     };
   }, [loadService]);
 
-  // Save client id for messaging
   useEffect(() => {
     if (service?.client?.client_id) {
       setItem('reciever_id', service.client.client_id);
     }
   }, [service?.client?.client_id]);
 
-  // Panel toggle
   const [animating, setAnimating] = useState(false);
   const togglePanel = () => {
     if (animating) return;
@@ -185,37 +160,28 @@ const TruckServiceScreen: React.FC = () => {
       duration: 300,
       useNativeDriver: false,
     }).start(() => {
-      setIsExpanded((prev) => !prev);
+      setIsExpanded(prev => !prev);
       setAnimating(false);
     });
   };
 
-  // Cancel/Complete modal handlers
   const handleCancelRide = () => setConfirmModal({ visible: true, action: 'cancel' });
   const handleCompleteRide = () => setConfirmModal({ visible: true, action: 'complete' });
 
-  // Confirm cancel
   const handleConfirmCancel = async () => {
     setConfirmModal({ visible: false, action: null });
     try {
       await reopenRideRequest(service?._id || '', cancelReason);
       setCancelReason('');
-      setResultModal({
-        visible: true,
-        message: 'You have cancelled the accepted ride.',
-      });
+      setResultModal({ visible: true, message: 'You have cancelled the accepted ride.' });
       loadService();
-    } catch (err: any) {
+    } catch {
       setCancelReason('');
-      setResultModal({
-        visible: true,
-        message: 'Failed to cancel ride. Please try again.',
-      });
+      setResultModal({ visible: true, message: 'Failed to cancel ride. Please try again.' });
       loadService();
     }
   };
 
-  // Confirm complete
   const handleConfirmComplete = async () => {
     setConfirmModal({ visible: false, action: null });
     try {
@@ -227,150 +193,76 @@ const TruckServiceScreen: React.FC = () => {
           : (res.message || 'Failed to complete ride. Please try again.'),
       });
       loadService();
-    } catch (err: any) {
-      setResultModal({
-        visible: true,
-        message: 'Failed to complete ride. Please try again.',
-      });
+    } catch {
+      setResultModal({ visible: true, message: 'Failed to complete ride. Please try again.' });
       loadService();
     }
   };
 
-  // Dismiss result modal, always go back to dashboard
   const handleCloseResultModal = () => {
     setResultModal({ visible: false, message: '' });
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'TruckDashboardScreen' }],
-      })
-    );
+    navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'TruckDashboardScreen' }] }));
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#357EBD" />
-        <Text style={styles.loadingText}>Loading service details…</Text>
-      </View>
-    );
-  }
+  if (loading || !googleApiKey) return (
+    <SafeAreaView style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#357EBD" />
+      <Text style={styles.loadingText}>Loading service details…</Text>
+    </SafeAreaView>
+  );
 
-  if (errorMsg) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{errorMsg}</Text>
-        <TouchableOpacity
-          style={styles.goBackButton}
-          onPress={() =>
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'TruckDashboardScreen' }],
-              })
-            )
-          }
-        >
-          <Text style={styles.goBackText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  if (errorMsg) return (
+    <SafeAreaView style={styles.errorContainer}>
+      <Text style={styles.errorText}>{errorMsg}</Text>
+      <TouchableOpacity
+        style={styles.goBackButton}
+        onPress={() =>
+          navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'TruckDashboardScreen' }] }))
+        }
+      >
+        <Text style={styles.goBackText}>Go Back</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
 
   if (!service) return null;
 
-  // --- Main UI ---
-  const {
-    pickup_date,
-    vehicle_details,
-    offers,
-    status,
-  } = service;
-
+  const { pickup_date, vehicle_details, offers, status } = service;
   const metersPickupToDrop = originCoords && destCoords ? getDistance(originCoords, destCoords) : 0;
   const pickupToDropMiles = metersPickupToDrop / 1609.344;
-
-  let currentToPickupMiles = 0;
-  if (currentCoords && originCoords) {
-    currentToPickupMiles = getDistance(currentCoords, originCoords) / 1609.344;
-  }
-
+  const currentToPickupMiles = currentCoords && originCoords ? getDistance(currentCoords, originCoords) / 1609.344 : 0;
   const currentToPickupStr = currentToPickupMiles.toFixed(2);
-  const totalToDropoffMilesStr = (
-    currentToPickupMiles + pickupToDropMiles
-  ).toFixed(2);
+  const totalToDropoffMilesStr = (currentToPickupMiles + pickupToDropMiles).toFixed(2);
 
-  const latitudeDelta =
-    originCoords && destCoords
-      ? Math.abs(originCoords.latitude - destCoords.latitude) * 1.5 || 0.05
-      : 0.05;
-  const longitudeDelta =
-    originCoords && destCoords
-      ? Math.abs(originCoords.longitude - destCoords.longitude) * 1.5 || 0.05
-      : 0.05;
-  const midLatitude =
-    originCoords && destCoords
-      ? (originCoords.latitude + destCoords.latitude) / 2
-      : originCoords
-        ? originCoords.latitude
-        : 0;
-  const midLongitude =
-    originCoords && destCoords
-      ? (originCoords.longitude + destCoords.longitude) / 2
-      : originCoords
-        ? originCoords.longitude
-        : 0;
+  const latitudeDelta = originCoords && destCoords ? Math.abs(originCoords.latitude - destCoords.latitude) * 1.5 || 0.05 : 0.05;
+  const longitudeDelta = originCoords && destCoords ? Math.abs(originCoords.longitude - destCoords.longitude) * 1.5 || 0.05 : 0.05;
+  const midLatitude = originCoords && destCoords ? (originCoords.latitude + destCoords.latitude) / 2 : originCoords ? originCoords.latitude : 0;
+  const midLongitude = originCoords && destCoords ? (originCoords.longitude + destCoords.longitude) / 2 : originCoords ? originCoords.longitude : 0;
 
   return (
-    <View style={styles.container}>
-      {/* --- Notification Modal --- */}
-      <UniversalMessageModal
-        visible={universalModal.visible}
-        type={universalModal.type}
-        title={universalModal.title}
-        message={universalModal.message}
-        onClose={universalModal.onClose!}
-      />
-
-      {/* --- Result Modal for Congratulation/Cancel --- */}
-      <UniversalMessageModal
-        visible={resultModal.visible}
-        type={resultModal.message.startsWith('Congratulations') ? 'success' : 'notice'}
-        title={resultModal.message.startsWith('Congratulations') ? 'Success' : 'Notice'}
-        message={resultModal.message}
-        onClose={handleCloseResultModal}
-      />
-
+    <SafeAreaView style={styles.container}>
+      <UniversalMessageModal visible={universalModal.visible} type={universalModal.type} title={universalModal.title} message={universalModal.message} onClose={universalModal.onClose!} />
+      <UniversalMessageModal visible={resultModal.visible} type={resultModal.message.startsWith('Congratulations') ? 'success' : 'notice'} title={resultModal.message.startsWith('Congratulations') ? 'Success' : 'Notice'} message={resultModal.message} onClose={handleCloseResultModal} />
       <HeaderMenuButton />
 
-      <Animated.View
-        style={{
-          height: Animated.subtract(hp(100), slideAnim),
-        }}
-      >
+      <Animated.View style={{ height: Animated.subtract(hp(100), slideAnim) }}>
         <Map
-          region={{
-            latitude: midLatitude,
-            longitude: midLongitude,
-            latitudeDelta,
-            longitudeDelta,
-          }}
+          region={{ latitude: midLatitude, longitude: midLongitude, latitudeDelta, longitudeDelta }}
           originCoords={originCoords}
           destCoords={destCoords}
           onMapPress={() => { }}
           currentCoords={currentCoords}
           bottomOffset={panelHeight}
-          autoFitRoute={!isExpanded}
+          autoFitRoute={!!originCoords && !!destCoords && !isExpanded}
+          googleApiKey={googleApiKey} // Pass API key properly
         />
       </Animated.View>
 
+
+
       <Animated.View style={[styles.detailsPanel, { height: slideAnim }]}>
         <TouchableOpacity onPress={togglePanel} style={styles.arrowContainer}>
-          <Icon
-            name={isExpanded ? 'keyboard-arrow-down' : 'keyboard-arrow-up'}
-            size={28}
-            color="#ffffff"
-          />
+          <Icon name={isExpanded ? 'keyboard-arrow-down' : 'keyboard-arrow-up'} size={28} color="#fff" />
         </TouchableOpacity>
 
         {isExpanded && (
@@ -378,68 +270,68 @@ const TruckServiceScreen: React.FC = () => {
             <ScrollView contentContainerStyle={styles.detailsContent}>
               <View style={styles.row}>
                 <Text style={styles.label}>Time to Reach:</Text>
-                <Text style={styles.value}>{offers.time_to_reach}</Text>
+                <Text style={styles.value}>{offers?.time_to_reach ?? '-'}</Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Price:</Text>
-                <Text style={styles.price_value}>
-                  £{offers.offered_price.toFixed(2)}
-                </Text>
+                <Text style={styles.price_value}>£{offers?.offered_price?.toFixed(2) ?? '-'}</Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.label}>Pickup Date:</Text>
                 <Text style={styles.value}>
-                  {new Date(pickup_date).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
+                  {pickup_date ? new Date(pickup_date).toLocaleDateString('en-GB', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                  }) : '-'}
                 </Text>
               </View>
+
               <View style={styles.row}>
                 <Icon name="place" size={18} color="green" style={{ marginRight: 5 }} />
                 <Text style={styles.label}>Pickup Location:</Text>
                 <Text style={styles.value}>
-                  {originAddress || 'Unknown'} ({currentToPickupStr} mi)
+                  {originAddr} ({currentToPickupStr} mi)
                 </Text>
               </View>
+
               <View style={styles.row}>
                 <Icon name="place" size={18} color="red" style={{ marginRight: 5 }} />
                 <Text style={styles.label}>Drop-off Location:</Text>
                 <Text style={styles.value}>
-                  {destinationAddress || 'Unknown'} ({totalToDropoffMilesStr} mi)
+                  {destAddr} ({totalToDropoffMilesStr} mi)
                 </Text>
               </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Vehicle:</Text>
-                <Text style={styles.value}>
-                  {vehicle_details.make} {vehicle_details.model} — Reg:{' '}
-                  {vehicle_details.registration}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Wheels Category:</Text>
-                <Text style={styles.value}>
-                  {vehicle_details.wheels_category.charAt(0).toUpperCase() +
-                    vehicle_details.wheels_category.slice(1)}
-                </Text>
-              </View>
-              {vehicle_details.vehicle_category !== 'donot-apply' && (
-                <View style={styles.row}>
-                  <Text style={styles.label}>Vehicle Category:</Text>
-                  <Text style={styles.value}>
-                    {vehicle_details.vehicle_category.toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              {vehicle_details.loaded !== 'Unloaded' && (
-                <View style={styles.row}>
-                  <Text style={styles.label}>Loaded:</Text>
-                  <Text style={styles.value}>
-                    {vehicle_details.loaded.charAt(0).toUpperCase() +
-                      vehicle_details.loaded.slice(1)}
-                  </Text>
-                </View>
+
+              {vehicle_details && (
+                <>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Vehicle:</Text>
+                    <Text style={styles.value}>
+                      {vehicle_details.make} {vehicle_details.model} — Reg: {vehicle_details.registration}
+                    </Text>
+                  </View>
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Wheels Category:</Text>
+                    <Text style={styles.value}>
+                      {vehicle_details.wheels_category?.charAt(0).toUpperCase() + vehicle_details.wheels_category?.slice(1)}
+                    </Text>
+                  </View>
+                  {vehicle_details.vehicle_category !== 'donot-apply' && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Vehicle Category:</Text>
+                      <Text style={styles.value}>
+                        {vehicle_details.vehicle_category.toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  {vehicle_details.loaded !== 'Unloaded' && (
+                    <View style={styles.row}>
+                      <Text style={styles.label}>Loaded:</Text>
+                      <Text style={styles.value}>
+                        {vehicle_details.loaded?.charAt(0).toUpperCase() + vehicle_details.loaded?.slice(1)}
+                      </Text>
+                    </View>
+                  )}
+                </>
               )}
             </ScrollView>
 
@@ -460,7 +352,6 @@ const TruckServiceScreen: React.FC = () => {
               )}
             </TouchableOpacity>
 
-            {/* --- Action Buttons Row (Side by Side) --- */}
             {status !== 'completed' && status !== 'cancelled' && (
               <View style={styles.actionRow}>
                 <TouchableOpacity
@@ -485,26 +376,15 @@ const TruckServiceScreen: React.FC = () => {
         )}
       </Animated.View>
 
-      {/* Confirmation Modal for Cancel/Complete */}
       <ConfirmModal
         visible={confirmModal.visible}
-        title={
-          confirmModal.action === 'cancel'
-            ? 'Cancel Ride'
-            : 'Complete Ride'
-        }
-        message={
-          confirmModal.action === 'cancel'
-            ? 'Are you sure you want to cancel this ride?'
-            : 'Mark this ride as complete?'
-        }
+        title={confirmModal.action === 'cancel' ? 'Cancel Ride' : 'Complete Ride'}
+        message={confirmModal.action === 'cancel'
+          ? 'Are you sure you want to cancel this ride?'
+          : 'Mark this ride as complete?'}
         confirmText={confirmModal.action === 'cancel' ? 'Yes, Cancel' : 'Yes, Complete'}
         cancelText="No"
-        onConfirm={
-          confirmModal.action === 'cancel'
-            ? handleConfirmCancel
-            : handleConfirmComplete
-        }
+        onConfirm={confirmModal.action === 'cancel' ? handleConfirmCancel : handleConfirmComplete}
         onCancel={() => {
           setConfirmModal({ visible: false, action: null });
           setCancelReason('');
@@ -532,7 +412,7 @@ const TruckServiceScreen: React.FC = () => {
           />
         )}
       </ConfirmModal>
-    </View>
+    </SafeAreaView>
   );
 };
 

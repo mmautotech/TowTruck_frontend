@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  StyleSheet,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { wp, hp } from '../../src/utils/responsive';
 
@@ -31,45 +43,57 @@ export const CancelRideModal: React.FC<CancelRideModalProps> = ({
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          <Text style={styles.title}>Cancel Ride</Text>
-          <Text style={styles.subtitle}>Please provide a reason:</Text>
-
-          <TextInput
-            style={styles.textInput}
-            placeholder="Enter cancellation reason"
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            numberOfLines={3}
-            maxLength={140}
-          />
-
-          <TouchableOpacity
-            style={[styles.permanentButton, (loading || !reason.trim()) && { opacity: 0.5 }]}
-            onPress={() => onCancelPermanent(reason)}
-            disabled={loading || !reason.trim()}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.overlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // adjust if needed
+            style={{ width: '100%' }}
           >
-            <Text style={styles.permanentText}>Cancel Permanently</Text>
-          </TouchableOpacity>
+            <ScrollView
+              contentContainerStyle={styles.container}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.title}>Cancel Ride</Text>
+              <Text style={styles.subtitle}>Please provide a reason:</Text>
 
-          <TouchableOpacity
-            style={[styles.reopenButton, (loading || !reason.trim()) && { opacity: 0.5 }]}
-            onPress={() => onReopen(reason)}
-            disabled={loading || !reason.trim()}
-          >
-            <Text style={styles.reopenText}>Reopen for New Offers</Text>
-          </TouchableOpacity>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter cancellation reason"
+                value={reason}
+                onChangeText={setReason}
+                multiline
+                numberOfLines={3}
+                maxLength={140}
+              />
 
-          <TouchableOpacity style={styles.closeModal} onPress={onClose}>
-            <Ionicons name="close" size={wp(6)} color="#888" />
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.permanentButton, (loading || !reason.trim()) && { opacity: 0.5 }]}
+                onPress={() => onCancelPermanent(reason)}
+                disabled={loading || !reason.trim()}
+              >
+                <Text style={styles.permanentText}>Cancel Permanently</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.reopenButton, (loading || !reason.trim()) && { opacity: 0.5 }]}
+                onPress={() => onReopen(reason)}
+                disabled={loading || !reason.trim()}
+              >
+                <Text style={styles.reopenText}>Reopen for New Offers</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.closeModal} onPress={onClose}>
+                <Ionicons name="close" size={wp(6)} color="#888" />
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
+
 
 const styles = StyleSheet.create({
   overlay: {

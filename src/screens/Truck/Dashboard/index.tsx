@@ -274,7 +274,7 @@ const TruckDashboardScreen: React.FC = () => {
 
   useEffect(() => {
     if (activeTab !== 'new') return;
-    const iv = setInterval(() => setRefreshCounter(c => c + 1), 15000);
+    const iv = setInterval(() => setRefreshCounter(c => c + 1), 60000);
     return () => clearInterval(iv);
   }, [activeTab]);
 

@@ -227,6 +227,7 @@ const MessagingScreen: React.FC = () => {
                   paddingVertical: 6,
                   backgroundColor: '#f5f5f5',
                   alignItems: 'flex-end',
+
                 }}
               >
                 <TextInput

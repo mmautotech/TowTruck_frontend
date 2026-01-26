@@ -87,7 +87,7 @@ export async function CompleteRide(
 ): Promise<CompleteRideResponse> {
   const { data } = await axiosInstance.post<CompleteRideResponse>(
     '/ride-request/complete',
-    { request_id}
+    { request_id }
   );
   return data;
 }

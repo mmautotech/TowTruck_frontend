@@ -27,7 +27,7 @@ export function useLocation() {
         loc = await Promise.race<Location.LocationObject>([
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
           new Promise<Location.LocationObject>((_, reject) =>
-            setTimeout(() => reject(new Error('Location timeout')), 5000)
+            setTimeout(() => reject(new Error('Location timeout')), 12000)
           ),
         ]);
       }

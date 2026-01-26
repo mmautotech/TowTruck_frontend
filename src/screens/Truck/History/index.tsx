@@ -12,6 +12,7 @@ import CustomHeader from '../../../components/CustomHeader';
 import { fetchTruckHistory } from '../../../api/History';
 import HistoryCard from '../../../components/HistoryCard';
 import { useFocusEffect } from '@react-navigation/native';
+import { useReverseGeocode } from '../../../hooks/useReverseGeocode';
 
 type HistoryItem = {
   id: string;
@@ -20,6 +21,8 @@ type HistoryItem = {
   date: string;
   price: string;
   statusLabel: string;
+  originAddress: string;
+  destinationAddress: string;
 };
 
 const TruckHistoryScreen = () => {
@@ -27,6 +30,12 @@ const TruckHistoryScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const refreshingRef = useRef(false);
+
+  const { reverseGeocode } = useReverseGeocode();
+  const cache = useRef<Map<string, string>>(new Map());
+
+  const getKey = (coords: [number, number]) =>
+    `${coords[1].toFixed(5)},${coords[0].toFixed(5)}`;
 
   const loadHistory = useCallback(async () => {
     if (!refreshingRef.current) setLoading(true);
@@ -40,17 +49,47 @@ const TruckHistoryScreen = () => {
 
     try {
       const history = await fetchTruckHistory();
-      const mapped = history.map((item): HistoryItem => {
+      const mapped: HistoryItem[] = [];
+
+      for (const item of history) {
         const pickupDate = new Date(item.pickup_date);
-        return {
+
+        // --- origin ---
+        const originKey = getKey(item.origin_location.coordinates);
+        let originAddress = cache.current.get(originKey);
+        if (!originAddress) {
+          originAddress =
+            (await reverseGeocode({
+              latitude: item.origin_location.coordinates[1],
+              longitude: item.origin_location.coordinates[0],
+            })) || 'Unknown pickup';
+          cache.current.set(originKey, originAddress);
+        }
+
+        // --- destination ---
+        const destinationKey = getKey(item.dest_location.coordinates);
+        let destinationAddress = cache.current.get(destinationKey);
+        if (!destinationAddress) {
+          destinationAddress =
+            (await reverseGeocode({
+              latitude: item.dest_location.coordinates[1],
+              longitude: item.dest_location.coordinates[0],
+            })) || 'Unknown dropoff';
+          cache.current.set(destinationKey, destinationAddress);
+        }
+
+        mapped.push({
           id: item.request_id,
           origin: item.origin_location.coordinates,
           destination: item.dest_location.coordinates,
           date: pickupDate.toDateString().slice(4, 10),
           price: item.offer?.accepted ? `£${item.offer.offered_price}` : '',
           statusLabel: item.ride_status.label,
-        };
-      });
+          originAddress,
+          destinationAddress,
+        });
+      }
+
       setHistoryData(mapped);
     } catch (err) {
       console.error('Failed to load truck history', err);
@@ -59,7 +98,7 @@ const TruckHistoryScreen = () => {
       setRefreshing(false);
       refreshingRef.current = false;
     }
-  }, []);
+  }, [reverseGeocode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,6 +120,8 @@ const TruckHistoryScreen = () => {
       date={item.date}
       price={item.price}
       status={item.statusLabel}
+      originAddress={item.originAddress}
+      destinationAddress={item.destinationAddress}
       dotColors={{ pickup: '#357EBD', dropoff: '#448844' }}
     />
   );

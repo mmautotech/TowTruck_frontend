@@ -72,7 +72,7 @@ const ServicesList: React.FC<ServicesListProps> = ({
   useEffect(() => {
     const interval = setInterval(() => {
       loadOffers();
-    }, 15000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [loadOffers]);
 

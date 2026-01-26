@@ -83,9 +83,16 @@ const ClientConfirmRequestScreen: React.FC = () => {
             setOriginAddress('Loading...');
             setDestAddress('Loading...');
 
-            // 🔹 Trigger reverse geocoding (NO await)
-            originGeo.reverseGeocode(oCoords);
-            destGeo.reverseGeocode(dCoords);
+            // 🔹 Parallel reverse geocoding (await both)
+            const [origin, dest] = await Promise.all([
+              originGeo.reverseGeocode(oCoords),
+              destGeo.reverseGeocode(dCoords),
+            ]);
+
+            if (active) {
+              setOriginAddress(origin);
+              setDestAddress(dest);
+            }
           }
         } catch (err: any) {
           if (err?.response?.status === 401) {
