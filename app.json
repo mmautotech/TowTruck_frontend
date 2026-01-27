@@ -14,7 +14,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mmitsol.towly"
+      "bundleIdentifier": "com.mmitsol.towly",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -27,9 +30,10 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "owner": "mmautotechmobileapp",
     "extra": {
       "eas": {
-        "projectId": "4858e267-6b6f-413b-b0dc-7c512065a41b"
+        "projectId": "27b3bbbf-0644-4d0e-a876-ffdda036aa4b"
       }
     }
   }
