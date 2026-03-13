@@ -7,8 +7,8 @@ export const fetchProfileStatus = async () => {
   return response.data;
 };
 
-const DEV_API = process.env.EXPO_PUBLIC_API_URL_DEV ?? 'http://192.168.18.84:5000/api';
-const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.18.84:5000/api';
+const DEV_API = process.env.EXPO_PUBLIC_API_URL_DEV ?? 'http://192.168.0.101:5000/api';
+const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.0.101:5000/api';
 
 const BASE_URL = __DEV__ ? DEV_API : PROD_API;
 
