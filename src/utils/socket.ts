@@ -22,7 +22,7 @@ const SOCKET_URL = (() => {
     }
   }
   // final fallback
-  return 'https://c3ae3f4da5c5.ngrok-free.app';
+  return 'http://192.168.18.84:5000';
 })();
 
 interface AuthPayload { token: string; }

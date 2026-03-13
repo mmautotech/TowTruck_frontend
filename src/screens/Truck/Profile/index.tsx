@@ -16,6 +16,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   getDriverProfile,
@@ -110,8 +111,8 @@ export default function TruckProfileScreen() {
             const uri = res.assets[0].uri;
             if (activeTab === 'driver') {
               if (type === 'frontImg') setFrontImg(uri);
-              if (type === 'backImg')  setBackImg(uri);
-              if (type === 'selfieImg')setSelfieImg(uri);
+              if (type === 'backImg') setBackImg(uri);
+              if (type === 'selfieImg') setSelfieImg(uri);
             } else {
               setVehicleImg(uri);
             }
@@ -130,8 +131,8 @@ export default function TruckProfileScreen() {
             const uri = res.assets[0].uri;
             if (activeTab === 'driver') {
               if (type === 'frontImg') setFrontImg(uri);
-              if (type === 'backImg')  setBackImg(uri);
-              if (type === 'selfieImg')setSelfieImg(uri);
+              if (type === 'backImg') setBackImg(uri);
+              if (type === 'selfieImg') setSelfieImg(uri);
             } else {
               setVehicleImg(uri);
             }
@@ -146,11 +147,11 @@ export default function TruckProfileScreen() {
   const validateDriver = () => {
     const errs: any = {};
     if (!firstName.trim()) errs.firstName = 'Required';
-    if (!lastName.trim())  errs.lastName  = 'Required';
-    if (!dob.trim())       errs.dob       = 'Required';
+    if (!lastName.trim()) errs.lastName = 'Required';
+    if (!dob.trim()) errs.dob = 'Required';
     if (!licenseNumber.trim()) errs.licenseNumber = 'Required';
     if (!licenseExpiry.trim()) errs.licenseExpiry = 'Required';
-    if (!email.trim())     errs.email     = 'Required';
+    if (!email.trim()) errs.email = 'Required';
     if (!phoneNumber.trim()) errs.phoneNumber = 'Required';
     setDriverErrors(errs);
     return Object.keys(errs).length === 0;
@@ -159,9 +160,9 @@ export default function TruckProfileScreen() {
   const validateVehicle = () => {
     const errs: any = {};
     if (!registration.trim()) errs.registration = 'Required';
-    if (!make.trim())         errs.make         = 'Required';
-    if (!model.trim())        errs.model        = 'Required';
-    if (!color.trim())        errs.color        = 'Required';
+    if (!make.trim()) errs.make = 'Required';
+    if (!model.trim()) errs.model = 'Required';
+    if (!color.trim()) errs.color = 'Required';
     setVehicleErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -184,7 +185,7 @@ export default function TruckProfileScreen() {
         if (frontImg?.startsWith('file'))
           form.append('license_Front', { uri: frontImg, name: 'front.jpg', type: 'image/jpeg' } as any);
         if (backImg?.startsWith('file'))
-          form.append('license_Back', { uri: backImg,  name: 'back.jpg',  type: 'image/jpeg' } as any);
+          form.append('license_Back', { uri: backImg, name: 'back.jpg', type: 'image/jpeg' } as any);
         if (selfieImg?.startsWith('file'))
           form.append('license_Selfie', { uri: selfieImg, name: 'selfie.jpg', type: 'image/jpeg' } as any);
 
@@ -225,49 +226,49 @@ export default function TruckProfileScreen() {
   const renderDriverForm = () => (
     <>
       <LabeledTextInput label="First Name" value={firstName} onChangeText={setFirstName} error={driverErrors.firstName} />
-      <LabeledTextInput label="Last Name"  value={lastName}  onChangeText={setLastName}  error={driverErrors.lastName} />
+      <LabeledTextInput label="Last Name" value={lastName} onChangeText={setLastName} error={driverErrors.lastName} />
       <LabeledTextInput
         label="Email"
         value={email}
-        onChangeText={() => {}}
+        onChangeText={() => { }}
         editable={false}
         style={{ backgroundColor: '#f2f2f2' }}
       />
       <LabeledTextInput
         label="Phone"
         value={phoneNumber}
-        onChangeText={() => {}}
+        onChangeText={() => { }}
         editable={false}
         style={{ backgroundColor: '#f2f2f2' }}
       />
-      <LabeledTextInput label="Date of Birth"    value={dob}            onChangeText={setDob} error={driverErrors.dob} placeholder="DD-MM-YYYY" />
-      <LabeledTextInput label="License Number"   value={licenseNumber} onChangeText={setLicenseNumber} error={driverErrors.licenseNumber} />
-      <LabeledTextInput label="License Expiry"   value={licenseExpiry} onChangeText={setLicenseExpiry} error={driverErrors.licenseExpiry} placeholder="DD-MM-YYYY" />
-      <UploadImageBox label="License Front" image={frontImg}    onPress={()=>handlePickImage('frontImg')}    onRemove={()=>setFrontImg(null)} />
-      <UploadImageBox label="License Back"  image={backImg}     onPress={()=>handlePickImage('backImg')}     onRemove={()=>setBackImg(null)} />
-      <UploadImageBox label="Selfie"        image={selfieImg} onPress={()=>handlePickImage('selfieImg')} onRemove={()=>setSelfieImg(null)} />
+      <LabeledTextInput label="Date of Birth" value={dob} onChangeText={setDob} error={driverErrors.dob} placeholder="DD-MM-YYYY" />
+      <LabeledTextInput label="License Number" value={licenseNumber} onChangeText={setLicenseNumber} error={driverErrors.licenseNumber} />
+      <LabeledTextInput label="License Expiry" value={licenseExpiry} onChangeText={setLicenseExpiry} error={driverErrors.licenseExpiry} placeholder="DD-MM-YYYY" />
+      <UploadImageBox label="License Front" image={frontImg} onPress={() => handlePickImage('frontImg')} onRemove={() => setFrontImg(null)} />
+      <UploadImageBox label="License Back" image={backImg} onPress={() => handlePickImage('backImg')} onRemove={() => setBackImg(null)} />
+      <UploadImageBox label="Selfie" image={selfieImg} onPress={() => handlePickImage('selfieImg')} onRemove={() => setSelfieImg(null)} />
     </>
   );
 
   const renderVehicleForm = () => (
     <>
       <LabeledTextInput label="Registration" value={registration} onChangeText={setRegistration} error={vehicleErrors.registration} />
-      <LabeledTextInput label="Make"         value={make}         onChangeText={setMake}         error={vehicleErrors.make} />
-      <LabeledTextInput label="Model"        value={model}        onChangeText={setModel}        error={vehicleErrors.model} />
-      <LabeledTextInput label="Color"        value={color}        onChangeText={setColor}        error={vehicleErrors.color} />
-      <UploadImageBox label="Truck View" image={vehicleImg} onPress={()=>handlePickImage('vehicleImg')} onRemove={()=>setVehicleImg(null)} />
+      <LabeledTextInput label="Make" value={make} onChangeText={setMake} error={vehicleErrors.make} />
+      <LabeledTextInput label="Model" value={model} onChangeText={setModel} error={vehicleErrors.model} />
+      <LabeledTextInput label="Color" value={color} onChangeText={setColor} error={vehicleErrors.color} />
+      <UploadImageBox label="Truck View" image={vehicleImg} onPress={() => handlePickImage('vehicleImg')} onRemove={() => setVehicleImg(null)} />
     </>
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <CustomHeader title="Profile" />
       <View style={styles.toggleContainer}>
         <TouchableOpacity
-          style={[styles.toggleButton, activeTab === 'driver'  && styles.activeToggleButton]}
+          style={[styles.toggleButton, activeTab === 'driver' && styles.activeToggleButton]}
           onPress={() => setActiveTab('driver')}
         >
-          <Text style={[styles.toggleText, activeTab === 'driver'  && styles.activeToggleText]}>Driver</Text>
+          <Text style={[styles.toggleText, activeTab === 'driver' && styles.activeToggleText]}>Driver</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.toggleButton, activeTab === 'vehicle' && styles.activeToggleButton]}
@@ -305,7 +306,7 @@ export default function TruckProfileScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 

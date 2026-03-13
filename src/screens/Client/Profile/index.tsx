@@ -27,6 +27,7 @@ import CustomHeader from '../../../components/CustomHeader';
 import ProfileImageHandler from '../../../components/ProfileImageHandler';
 import LabeledTextInput from '../../../components/LabeledTextInput';
 import styles from './styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ClientProfileScreen() {
   const navigation = useNavigation();
@@ -231,7 +232,7 @@ export default function ClientProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <CustomHeader title="My Profile" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -305,7 +306,7 @@ export default function ClientProfileScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 

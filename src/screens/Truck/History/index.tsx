@@ -13,6 +13,8 @@ import { fetchTruckHistory } from '../../../api/History';
 import HistoryCard from '../../../components/HistoryCard';
 import { useFocusEffect } from '@react-navigation/native';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 type HistoryItem = {
   id: string;
   origin: [number, number];
@@ -86,7 +88,7 @@ const TruckHistoryScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <CustomHeader title="History" showMenuButton />
       {loading && !refreshing ? (
         <View style={styles.loaderContainer}>
@@ -114,7 +116,7 @@ const TruckHistoryScreen = () => {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

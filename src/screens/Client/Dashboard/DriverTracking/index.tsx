@@ -10,14 +10,13 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import MapView from 'react-native-maps';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { getDistance } from 'geolib';
 
 import HeaderMenuButton from '../../../../components/HeaderMenuButton';
-import GlowingMarker from '../../../../components/GlowingMarker';
 import styles from './styles';
 import { ClientStackParamList } from '../../../../types';
 import {
@@ -30,12 +29,15 @@ import { setItem } from '../../../../utils/asyncStorage';
 import { CancelRideModal } from '../../../../components/CancelRideModal';
 import { useNotifications } from '../../../../hooks/useNotifications';
 import UniversalMessageModal, { ModalType } from '../../../../components/UniversalMessageModal';
+import { getRoute } from '../../../../api/location';
+import Map from '../../../../components/Map';
+import type { LatLng } from 'react-native-maps';
 
 type NavigationProp = StackNavigationProp<ClientStackParamList, 'ClientDriverTrackingScreen'>;
-
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const ClientDriverTrackingScreen: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
   const [expanded, setExpanded] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
@@ -45,20 +47,14 @@ const ClientDriverTrackingScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
 
-  // -- Notification Modal (for ride reopen/complete) --
-  const { notifications, markAsRead, refresh: refreshNotifications, unreadCount } = useNotifications();
+  const { notifications, markAsRead, refresh: refreshNotifications } = useNotifications();
   const [notificationModal, setNotificationModal] = useState<{
     visible: boolean;
     notif: (typeof notifications)[0] | null;
   }>({ visible: false, notif: null });
 
-  // Messaging badge still driven by socket:
-  const {
-    unreadCount: socketUnreadCount,
-    clearUnreadCount,
-  } = useClientSocket();
+  const { unreadCount: socketUnreadCount, clearUnreadCount } = useClientSocket();
 
-  // Animation for expand/collapse
   const mapHeight = anim.interpolate({
     inputRange: [0, 1],
     outputRange: [SCREEN_HEIGHT * 0.92, SCREEN_HEIGHT * 0.56],
@@ -68,6 +64,9 @@ const ClientDriverTrackingScreen: React.FC = () => {
     inputRange: [0, 1],
     outputRange: [SCREEN_HEIGHT * 0.1, SCREEN_HEIGHT * 0.46],
   });
+
+  const [routeCoords, setRouteCoords] = useState<LatLng[]>([]);
+  const [loadingRoute, setLoadingRoute] = useState(false);
 
   const toggleExpand = () => {
     Animated.timing(anim, {
@@ -87,7 +86,6 @@ const ClientDriverTrackingScreen: React.FC = () => {
     }
   };
 
-  // Fetch driver info on focus
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
@@ -111,10 +109,49 @@ const ClientDriverTrackingScreen: React.FC = () => {
     }, [])
   );
 
-  // Notification modal logic (rideReopened/rideCompleted)
+  useEffect(() => {
+    if (!driverInfo) return;
+    const { origin_location, dest_location } = driverInfo;
+    if (!origin_location || !dest_location) return;
+
+    const originCoords: LatLng = {
+      latitude: origin_location.coordinates[1],
+      longitude: origin_location.coordinates[0],
+    };
+
+    const destCoords: LatLng = {
+      latitude: dest_location.coordinates[1],
+      longitude: dest_location.coordinates[0],
+    };
+
+    // Throttle route fetch to prevent 429
+    let routeFetched = false;
+    const loadRoute = async () => {
+      if (routeFetched) return;
+      setLoadingRoute(true);
+      try {
+        await new Promise(r => setTimeout(r, 10000));
+        const route = await getRoute(originCoords, destCoords);
+        setRouteCoords(route);
+        routeFetched = true;
+      } catch (err: any) {
+        console.log('Failed to fetch route:', err);
+        if (err.response?.status === 429) {
+          Alert.alert(
+            'Rate Limit Reached',
+            'Too many requests to the routing service. Showing origin and destination only.'
+          );
+        }
+        setRouteCoords([originCoords, destCoords]);
+      } finally {
+        setLoadingRoute(false);
+      }
+    };
+    loadRoute();
+  }, [driverInfo]);
+
   useEffect(() => {
     if (!driverInfo?.request_id) return;
-    // Find unread relevant notification
     const relevantNotif = notifications
       .filter(
         n =>
@@ -132,7 +169,6 @@ const ClientDriverTrackingScreen: React.FC = () => {
     }
   }, [notifications, driverInfo?.request_id, notificationModal.visible]);
 
-  // Handle modal close: mark notification as read and go back to dashboard
   const handleNotificationModalClose = async () => {
     if (notificationModal.notif?._id) {
       await markAsRead(notificationModal.notif._id);
@@ -145,15 +181,12 @@ const ClientDriverTrackingScreen: React.FC = () => {
     });
   };
 
-  // Parse modal fields for UniversalMessageModal
   const notif = notificationModal.notif;
   let modalType: ModalType = 'info';
   let modalReason: string | undefined = undefined;
-
   if (notif) {
     if (notif.type === 'rideReopened' || notif.type === 'rideCompleted') {
       modalType = notif.type as ModalType;
-      // Try to parse 'Reason: ...' from the message, if present
       if (notif.message?.toLowerCase().includes('reason:')) {
         const match = notif.message.match(/reason:\s*(.*)$/i);
         if (match && match[1]) modalReason = match[1];
@@ -163,29 +196,28 @@ const ClientDriverTrackingScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'left', 'right', 'bottom']}>
         <ActivityIndicator size="large" color="#357EBD" />
         <Text style={{ marginTop: 12 }}>Fetching Driver Info...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error || !driverInfo || !driverInfo.truck) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top', 'left', 'right']}>
         <Text style={{ color: 'red', fontSize: 16 }}>
           {error || 'Driver tracking unavailable'}
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  // fetch driver tracking info in request_id for cancellation
   const { origin_location, dest_location, truck, offered_price, request_id } = driverInfo;
 
   const coords = truck?.current_location?.coordinates || null;
-  const lat = coords?.[1] ?? 33.6844;
-  const lon = coords?.[0] ?? 73.0479;
+  const truckLat = coords?.[1] ?? 33.6844;
+  const truckLon = coords?.[0] ?? 73.0479;
 
   const originLat = origin_location?.coordinates?.[1] ?? 0;
   const originLon = origin_location?.coordinates?.[0] ?? 0;
@@ -193,7 +225,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
   const destLon = dest_location?.coordinates?.[0] ?? 0;
 
   const distanceMeters =
-    getDistance({ latitude: lat, longitude: lon }, { latitude: originLat, longitude: originLon }) +
+    getDistance({ latitude: truckLat, longitude: truckLon }, { latitude: originLat, longitude: originLon }) +
     getDistance({ latitude: originLat, longitude: originLon }, { latitude: destLat, longitude: destLon });
 
   const distanceMiles = (distanceMeters / 1609.344).toFixed(2);
@@ -203,8 +235,6 @@ const ClientDriverTrackingScreen: React.FC = () => {
     ? truck.driver_photo
     : `data:image/jpeg;base64,${truck.driver_photo}`;
 
-  // ===== Cancel Actions =====
-  // Only notification triggers navigation!
   const handleCancelPermanent = async (reason: string) => {
     setCancelModalVisible(false);
     setLoading(true);
@@ -237,42 +267,41 @@ const ClientDriverTrackingScreen: React.FC = () => {
     }
   };
 
+  const truckers = coords ? [{ latitude: truckLat, longitude: truckLon }] : [];
+
+
+
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container]} edges={['bottom']}>
       <HeaderMenuButton />
 
-      {/* ==== Ride Status Notification Modal ==== */}
       <UniversalMessageModal
         visible={notificationModal.visible}
         onClose={handleNotificationModalClose}
         type={modalType}
-        title={undefined}
         message={notif?.message || ''}
         reason={modalReason}
       />
 
       <Animated.View style={{ height: mapHeight }}>
-        <MapView
-          style={StyleSheet.absoluteFill}
-          showsUserLocation
-          initialRegion={{
-            latitude: lat,
-            longitude: lon,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-        >
-          {coords && <GlowingMarker latitude={lat} longitude={lon} />}
-        </MapView>
+        {loadingRoute ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#357EBD" />
+            <Text style={{ marginTop: 12 }}>Loading Route...</Text>
+          </View>
+        ) : (
+          <Map
+            originCoords={{ latitude: originLat, longitude: originLon }}
+            destCoords={{ latitude: destLat, longitude: destLon }}
+            routeCoords={routeCoords}
+            truckers={truckers}
+          />
+        )}
       </Animated.View>
 
       <Animated.View style={[styles.bottomCard, { height: cardHeight }]}>
-        <TouchableOpacity
-          activeOpacity={1}
-          style={StyleSheet.absoluteFill}
-          onPress={toggleExpand}
-        />
+        <TouchableOpacity activeOpacity={1} style={StyleSheet.absoluteFill} onPress={toggleExpand} />
         <Ionicons
           name={expanded ? 'chevron-down' : 'chevron-up'}
           size={24}
@@ -283,9 +312,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
         <Text style={styles.headline}>Track Your Driver</Text>
 
         <Image
-          source={{
-            uri: avatarUri || 'https://cdn-icons-png.flaticon.com/512/847/847969.png',
-          }}
+          source={{ uri: avatarUri || 'https://cdn-icons-png.flaticon.com/512/847/847969.png' }}
           style={styles.avatar}
         />
 
@@ -310,10 +337,11 @@ const ClientDriverTrackingScreen: React.FC = () => {
         </View>
 
         <View style={styles.infoRow}>
-          <Text style={styles.infoText}>ETA: {estimatedTimeHours} hrs ({distanceMiles} mi)</Text>
+          <Text style={styles.infoText}>
+            ETA: {estimatedTimeHours} hrs ({distanceMiles} mi)
+          </Text>
         </View>
 
-        {/* ===== Button Row ===== */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={styles.cancelButton}
@@ -323,6 +351,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
             <Ionicons name="close-circle" size={18} color="#fff" style={{ marginRight: 8 }} />
             <Text style={styles.cancelText}>Cancel Ride</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.messageButton}
             onPress={handleMessagePress}
@@ -344,7 +373,6 @@ const ClientDriverTrackingScreen: React.FC = () => {
         </View>
       </Animated.View>
 
-      {/* Modal */}
       <CancelRideModal
         visible={cancelModalVisible}
         onClose={() => setCancelModalVisible(false)}
@@ -352,7 +380,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
         onCancelPermanent={handleCancelPermanent}
         onReopen={handleReopen}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

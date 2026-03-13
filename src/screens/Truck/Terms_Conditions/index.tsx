@@ -5,13 +5,16 @@ import { View, Text, ScrollView } from 'react-native';
 import CustomHeader from '../../../components/CustomHeader';
 import styles from './style';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 type Props = {
   hideHeader?: boolean;
 };
 
 const TermsAndConditionsScreen: React.FC<Props> = ({ hideHeader = false }) => {
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+
       {!hideHeader && <CustomHeader title="Terms & Conditions" showMenuButton />}
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -117,7 +120,7 @@ const TermsAndConditionsScreen: React.FC<Props> = ({ hideHeader = false }) => {
           📧 Towly@gmail.com
         </Text>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

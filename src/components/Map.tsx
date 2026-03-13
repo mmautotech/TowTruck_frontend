@@ -1,118 +1,100 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet } from 'react-native';
-import MapView, { Marker, MapPressEvent, Region, LatLng, Polyline } from 'react-native-maps';
-import GlowingMarker from './GlowingMarker'; // adjust path as needed
+import React, { useEffect, useRef } from "react";
+import MapView, { Marker, Polyline, Region, LatLng } from "react-native-maps";
+import { View, StyleSheet, Image } from "react-native";
 
 interface MapProps {
-  region: Region;
-  originCoords: LatLng | null;
-  destCoords: LatLng | null;
-  onMapPress: (e: MapPressEvent) => void;
-  currentCoords?: LatLng | null;
-  bottomOffset?: number; // Height (in px) of any panel covering map from bottom
-  autoFitRoute?: boolean; // If false, disables auto route fitting (e.g. when panel is maximized)
+  region?: Region | null;
+  originCoords?: LatLng | null;
+  destCoords?: LatLng | null;
+  routeCoords?: LatLng[];
+  truckers?: LatLng[]; // Trucker locations
+  onMapPress?: (e: any) => void;
+  bottomOffset?: number; // To offset fitting for bottom panel
+  autoFitRoute?: boolean; // Fit map to route automatically
+  currentCoords?: LatLng | null; // ← add this
+
 }
 
 const Map: React.FC<MapProps> = ({
   region,
   originCoords,
   destCoords,
+  routeCoords = [],
+  truckers = [],
   onMapPress,
-  currentCoords,
   bottomOffset = 0,
-  autoFitRoute = true, // default: true
+  autoFitRoute = true,
 }) => {
   const mapRef = useRef<MapView>(null);
 
+  // Auto fit map when route available
   useEffect(() => {
-    if (!mapRef.current) return;
-
-    if (!autoFitRoute) return; // Skip fitting when not needed
-
-    const basePad = 100;
-    const edgePadding = {
-      top: basePad,
-      bottom: basePad + bottomOffset,
-      left: basePad,
-      right: basePad,
-    };
-
-    if (currentCoords && originCoords) {
-      mapRef.current.fitToCoordinates([currentCoords, originCoords], {
-        edgePadding,
+    if (routeCoords.length > 0 && mapRef.current && autoFitRoute) {
+      mapRef.current.fitToCoordinates(routeCoords, {
+        edgePadding: {
+          top: 100,
+          right: 50,
+          bottom: 100 + bottomOffset, // add bottom offset
+          left: 50,
+        },
         animated: true,
       });
-    } else if (originCoords && destCoords) {
-      mapRef.current.fitToCoordinates([originCoords, destCoords], {
-        edgePadding,
-        animated: true,
-      });
-    } else if (originCoords) {
-      mapRef.current.animateToRegion({
-        ...originCoords,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
-    } else {
-      mapRef.current.animateToRegion(region);
     }
-  }, [currentCoords, originCoords, destCoords, region, bottomOffset, autoFitRoute]);
-
-  const currentToOrigin =
-    currentCoords && originCoords ? [currentCoords, originCoords] : [];
-  const originToDest =
-    originCoords && destCoords ? [originCoords, destCoords] : [];
+  }, [routeCoords, autoFitRoute, bottomOffset]);
 
   return (
-    <MapView
-      ref={mapRef}
-      style={StyleSheet.absoluteFill}
-      region={region}
-      onPress={onMapPress}
-      showsUserLocation={!currentCoords}
-    >
-      {/* Polyline: current → pickup (red) */}
-      {currentToOrigin.length === 2 && (
-        <Polyline
-          coordinates={currentToOrigin}
-          strokeColor="red"
-          strokeWidth={3}
-        />
-      )}
+    <View style={styles.container}>
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        initialRegion={
+          region || {
+            latitude: 31.5204,
+            longitude: 74.3587,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }
+        }
+        onPress={onMapPress}
+      >
+        {/* Pickup Marker */}
+        {originCoords && (
+          <Marker coordinate={originCoords} title="Pickup Location" pinColor="green" />
+        )}
 
-      {/* Polyline: pickup → drop-off (green) */}
-      {originToDest.length === 2 && (
-        <Polyline
-          coordinates={originToDest}
-          strokeColor="green"
-          strokeWidth={3}
-        />
-      )}
+        {/* Destination Marker */}
+        {destCoords && (
+          <Marker coordinate={destCoords} title="Destination" pinColor="red" />
+        )}
 
-      {/* Glowing marker for current location */}
-      {currentCoords && (
-        <GlowingMarker latitude={currentCoords.latitude} longitude={currentCoords.longitude} />
-      )}
+        {/* Truckers */}
+        {truckers.length > 0 &&
+          truckers.map((truck, index) => (
+            <Marker key={index} coordinate={truck} title={`Trucker ${index + 1}`}>
+              <Image
+                source={require('../../assets/trucker.png')}
+                style={{ width: 40, height: 40 }} // slightly bigger for visibility
+                resizeMode="contain"
+              />
+            </Marker>
+          ))}
 
-      {/* Pickup marker */}
-      {originCoords && (
-        <Marker
-          coordinate={originCoords}
-          title="Pickup"
-          pinColor="green"
-        />
-      )}
-
-      {/* Drop-off marker */}
-      {destCoords && (
-        <Marker
-          coordinate={destCoords}
-          title="Drop-off"
-          pinColor="red"
-        />
-      )}
-    </MapView>
+        {/* Route Line */}
+        {routeCoords.length > 1 && (
+          <Polyline coordinates={routeCoords} strokeColor="#357EBD" strokeWidth={4} />
+        )}
+      </MapView>
+    </View>
   );
 };
 
 export default Map;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  map: {
+    flex: 1,
+  },
+});

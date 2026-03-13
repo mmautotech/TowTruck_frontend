@@ -21,6 +21,8 @@ import AddFundsModal from '../../../components/AddFundsModal';
 import TransactionLogModal from '../../../components/TransactionLogModal';
 import TransactionRow from '../../../components/TransactionRow';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 const TABS = [
   { label: 'All', value: 'all' },
   { label: 'Pending', value: 'pending' },
@@ -57,7 +59,7 @@ const TruckWalletScreen: React.FC = () => {
       setRefreshing(false);
     }
   }, [refreshing]);
-  
+
   // Refresh when screen is focused
   useFocusEffect(
     useCallback(() => {
@@ -114,7 +116,7 @@ const TruckWalletScreen: React.FC = () => {
   const filteredTransactions = filterByTab(activeTab);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <CustomHeader title="Wallet" showMenuButton />
       {loading ? (
         <ActivityIndicator size="large" color="#357EBD" style={styles.loader} />
@@ -204,7 +206,7 @@ const TruckWalletScreen: React.FC = () => {
           />
         </>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

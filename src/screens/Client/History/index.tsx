@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchClientHistory } from '../../../api/History';
 import HistoryCard from '../../../components/HistoryCard';
 import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type HistoryItem = {
   id: string;
@@ -93,7 +94,7 @@ const ClientHistoryScreen = () => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: '#F0F0F0' }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: '#F0F0F0' }]} edges={['bottom']}>
       <CustomHeader title="History" />
       {loading && !refreshing ? (
         <View style={styles.loaderContainer}>
@@ -121,7 +122,7 @@ const ClientHistoryScreen = () => {
           }
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -9,11 +9,13 @@ import {
   Dimensions,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getDistance } from 'geolib';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Audio } from 'expo-av';
-
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { fetchActiveServiceForTruck } from '../../../../api/truck';
 import { CompleteRide, reopenRideRequest } from '../../../../api/rideRequest';
 import type { ServiceResponse } from '../../../../api/types';
@@ -30,6 +32,8 @@ import UniversalMessageModal from '../../../../components/UniversalMessageModal'
 import { useNotifications } from '../../../../hooks/useNotifications';
 import { wp, hp } from '../../../../utils/responsive';
 import styles from './styles';
+import { getRoute } from '../../../../api/location';
+
 
 const EXPANDED_HEIGHT = hp(60); // 60% of screen height
 const COLLAPSED_HEIGHT = hp(5); // approx. 40px on standard ~800px screen height
@@ -45,6 +49,8 @@ const TruckServiceScreen: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [panelHeight, setPanelHeight] = useState(EXPANDED_HEIGHT);
 
+  const insets = useSafeAreaInsets();
+
   // State
   const [service, setService] = useState<ServiceResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +59,7 @@ const TruckServiceScreen: React.FC = () => {
   const [confirmModal, setConfirmModal] = useState<{ visible: boolean; action: 'cancel' | 'complete' | null }>({ visible: false, action: null });
   const [cancelReason, setCancelReason] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-
+  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
   // --- Notifications ---
   const { notifications, refresh: refreshNotifications, markAsRead } = useNotifications();
   const [universalModal, setUniversalModal] = useState<{
@@ -89,7 +95,7 @@ const TruckServiceScreen: React.FC = () => {
           setShownNotificationId(notifToShow._id);
           try {
             await markAsRead(notifToShow._id); // Marks notification as read
-          } catch {}
+          } catch { }
           refreshNotifications();
           navigation.dispatch(
             CommonActions.reset({
@@ -127,8 +133,22 @@ const TruckServiceScreen: React.FC = () => {
         { shouldPlay: true }
       );
       await sound.playAsync();
-    } catch {}
+    } catch { }
   };
+
+
+  useEffect(() => {
+    const loadRoute = async () => {
+      if (!originCoords || !destCoords) return;
+      try {
+        const route = await getRoute(originCoords, destCoords);
+        setRouteCoords(route);
+      } catch (err) {
+        console.log('Route fetch error:', err);
+      }
+    };
+    loadRoute();
+  }, [originCoords, destCoords]);
 
   // Centralized loader: if no service, auto-navigate away
   const loadService = useCallback(async () => {
@@ -321,218 +341,224 @@ const TruckServiceScreen: React.FC = () => {
         ? originCoords.longitude
         : 0;
 
+
+
+
   return (
-    <View style={styles.container}>
-      {/* --- Notification Modal --- */}
-      <UniversalMessageModal
-        visible={universalModal.visible}
-        type={universalModal.type}
-        title={universalModal.title}
-        message={universalModal.message}
-        onClose={universalModal.onClose!}
-      />
-
-      {/* --- Result Modal for Congratulation/Cancel --- */}
-      <UniversalMessageModal
-        visible={resultModal.visible}
-        type={resultModal.message.startsWith('Congratulations') ? 'success' : 'notice'}
-        title={resultModal.message.startsWith('Congratulations') ? 'Success' : 'Notice'}
-        message={resultModal.message}
-        onClose={handleCloseResultModal}
-      />
-
-      <HeaderMenuButton />
-
-      <Animated.View
-        style={{
-          height: Animated.subtract(hp(100), slideAnim),
-        }}
-      >
-        <Map
-          region={{
-            latitude: midLatitude,
-            longitude: midLongitude,
-            latitudeDelta,
-            longitudeDelta,
-          }}
-          originCoords={originCoords}
-          destCoords={destCoords}
-          onMapPress={() => {}}
-          currentCoords={currentCoords}
-          bottomOffset={panelHeight}
-          autoFitRoute={!isExpanded}
+    <SafeAreaProvider>
+      <SafeAreaView style={[styles.container, { flex: 1 }]}>
+        {/* --- Notification Modal --- */}
+        <UniversalMessageModal
+          visible={universalModal.visible}
+          type={universalModal.type}
+          title={universalModal.title}
+          message={universalModal.message}
+          onClose={universalModal.onClose!}
         />
-      </Animated.View>
 
-      <Animated.View style={[styles.detailsPanel, { height: slideAnim }]}>
-        <TouchableOpacity onPress={togglePanel} style={styles.arrowContainer}>
-          <Icon
-            name={isExpanded ? 'keyboard-arrow-down' : 'keyboard-arrow-up'}
-            size={28}
-            color="#ffffff"
-          />
-        </TouchableOpacity>
+        {/* --- Result Modal for Congratulation/Cancel --- */}
+        <UniversalMessageModal
+          visible={resultModal.visible}
+          type={resultModal.message.startsWith('Congratulations') ? 'success' : 'notice'}
+          title={resultModal.message.startsWith('Congratulations') ? 'Success' : 'Notice'}
+          message={resultModal.message}
+          onClose={handleCloseResultModal}
+        />
 
-        {isExpanded && (
-          <>
-            <ScrollView contentContainerStyle={styles.detailsContent}>
-              <View style={styles.row}>
-                <Text style={styles.label}>Time to Reach:</Text>
-                <Text style={styles.value}>{offers.time_to_reach}</Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Price:</Text>
-                <Text style={styles.price_value}>
-                  £{offers.offered_price.toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Pickup Date:</Text>
-                <Text style={styles.value}>
-                  {new Date(pickup_date).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Icon name="place" size={18} color="green" style={{ marginRight: 5 }} />
-                <Text style={styles.label}>Pickup Location:</Text>
-                <Text style={styles.value}>
-                  {originAddress || 'Unknown'} ({currentToPickupStr} mi)
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Icon name="place" size={18} color="red" style={{ marginRight: 5 }} />
-                <Text style={styles.label}>Drop-off Location:</Text>
-                <Text style={styles.value}>
-                  {destinationAddress || 'Unknown'} ({totalToDropoffMilesStr} mi)
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Vehicle:</Text>
-                <Text style={styles.value}>
-                  {vehicle_details.make} {vehicle_details.model} — Reg:{' '}
-                  {vehicle_details.registration}
-                </Text>
-              </View>
-              <View style={styles.row}>
-                <Text style={styles.label}>Wheels Category:</Text>
-                <Text style={styles.value}>
-                  {vehicle_details.wheels_category.charAt(0).toUpperCase() +
-                    vehicle_details.wheels_category.slice(1)}
-                </Text>
-              </View>
-              {vehicle_details.vehicle_category !== 'donot-apply' && (
-                <View style={styles.row}>
-                  <Text style={styles.label}>Vehicle Category:</Text>
-                  <Text style={styles.value}>
-                    {vehicle_details.vehicle_category.toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              {vehicle_details.loaded !== 'Unloaded' && (
-                <View style={styles.row}>
-                  <Text style={styles.label}>Loaded:</Text>
-                  <Text style={styles.value}>
-                    {vehicle_details.loaded.charAt(0).toUpperCase() +
-                      vehicle_details.loaded.slice(1)}
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
+        <HeaderMenuButton />
 
-            <TouchableOpacity
-              style={styles.messageButton}
-              onPress={() => {
-                setUnreadCount(0);
-                navigation.navigate('MessagingScreen');
-              }}
-              disabled={animating}
-            >
-              <Icon name="message" size={20} color="#ffffff" />
-              <Text style={styles.messageButtonText}>Message</Text>
-              {unreadCount > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>{unreadCount}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-
-            {/* --- Action Buttons Row (Side by Side) --- */}
-            {status !== 'completed' && status !== 'cancelled' && (
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={handleCancelRide}
-                  disabled={animating}
-                >
-                  <Icon name="cancel" size={20} color="#fff" />
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.completeButton]}
-                  onPress={handleCompleteRide}
-                  disabled={animating}
-                >
-                  <Icon name="check-circle" size={20} color="#fff" />
-                  <Text style={styles.completeButtonText}>Complete</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </>
-        )}
-      </Animated.View>
-
-      {/* Confirmation Modal for Cancel/Complete */}
-      <ConfirmModal
-        visible={confirmModal.visible}
-        title={
-          confirmModal.action === 'cancel'
-            ? 'Cancel Ride'
-            : 'Complete Ride'
-        }
-        message={
-          confirmModal.action === 'cancel'
-            ? 'Are you sure you want to cancel this ride?'
-            : 'Mark this ride as complete?'
-        }
-        confirmText={confirmModal.action === 'cancel' ? 'Yes, Cancel' : 'Yes, Complete'}
-        cancelText="No"
-        onConfirm={
-          confirmModal.action === 'cancel'
-            ? handleConfirmCancel
-            : handleConfirmComplete
-        }
-        onCancel={() => {
-          setConfirmModal({ visible: false, action: null });
-          setCancelReason('');
-        }}
-      >
-        {confirmModal.action === 'cancel' && (
-          <TextInput
-            style={{
-              borderWidth: 1,
-              borderColor: '#ddd',
-              borderRadius: 8,
-              padding: 10,
-              marginTop: 14,
-              marginBottom: 4,
-              width: 240,
-              alignSelf: 'center',
-              fontSize: 16,
+        <Animated.View
+          style={{
+            height: Animated.subtract(hp(100) - insets.bottom, slideAnim)
+          }}
+        >
+          <Map
+            region={{
+              latitude: midLatitude,
+              longitude: midLongitude,
+              latitudeDelta,
+              longitudeDelta,
             }}
-            placeholder="Enter cancellation reason"
-            value={cancelReason}
-            onChangeText={setCancelReason}
-            multiline
-            numberOfLines={3}
-            maxLength={140}
+            originCoords={originCoords}
+            destCoords={destCoords}
+            routeCoords={routeCoords} // <-- new
+            onMapPress={() => { }}
+            currentCoords={currentCoords}
+            bottomOffset={panelHeight + insets.bottom}
+            autoFitRoute={!isExpanded}
           />
-        )}
-      </ConfirmModal>
-    </View>
+        </Animated.View>
+
+        <Animated.View style={[styles.detailsPanel, { height: Animated.add(slideAnim, insets.bottom) }]}>
+          <TouchableOpacity onPress={togglePanel} style={styles.arrowContainer}>
+            <Icon
+              name={isExpanded ? 'keyboard-arrow-down' : 'keyboard-arrow-up'}
+              size={28}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+
+          {isExpanded && (
+            <>
+              <ScrollView contentContainerStyle={styles.detailsContent}>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Time to Reach:</Text>
+                  <Text style={styles.value}>{offers.time_to_reach}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Price:</Text>
+                  <Text style={styles.price_value}>
+                    £{offers.offered_price.toFixed(2)}
+                  </Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Pickup Date:</Text>
+                  <Text style={styles.value}>
+                    {new Date(pickup_date).toLocaleDateString('en-GB', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.row}>
+                  <Icon name="place" size={18} color="green" style={{ marginRight: 5 }} />
+                  <Text style={styles.label}>Pickup Location:</Text>
+                  <Text style={styles.value}>
+                    {originAddress || 'Unknown'} ({currentToPickupStr} mi)
+                  </Text>
+                </View>
+                <View style={styles.row}>
+                  <Icon name="place" size={18} color="red" style={{ marginRight: 5 }} />
+                  <Text style={styles.label}>Drop-off Location:</Text>
+                  <Text style={styles.value}>
+                    {destinationAddress || 'Unknown'} ({totalToDropoffMilesStr} mi)
+                  </Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Vehicle:</Text>
+                  <Text style={styles.value}>
+                    {vehicle_details.make} {vehicle_details.model} — Reg:{' '}
+                    {vehicle_details.registration}
+                  </Text>
+                </View>
+                <View style={styles.row}>
+                  <Text style={styles.label}>Wheels Category:</Text>
+                  <Text style={styles.value}>
+                    {vehicle_details.wheels_category.charAt(0).toUpperCase() +
+                      vehicle_details.wheels_category.slice(1)}
+                  </Text>
+                </View>
+                {vehicle_details.vehicle_category !== 'donot-apply' && (
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Vehicle Category:</Text>
+                    <Text style={styles.value}>
+                      {vehicle_details.vehicle_category.toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                {vehicle_details.loaded !== 'Unloaded' && (
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Loaded:</Text>
+                    <Text style={styles.value}>
+                      {vehicle_details.loaded.charAt(0).toUpperCase() +
+                        vehicle_details.loaded.slice(1)}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.messageButton}
+                onPress={() => {
+                  setUnreadCount(0);
+                  navigation.navigate('MessagingScreen');
+                }}
+                disabled={animating}
+              >
+                <Icon name="message" size={20} color="#ffffff" />
+                <Text style={styles.messageButtonText}>Message</Text>
+                {unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadText}>{unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* --- Action Buttons Row (Side by Side) --- */}
+              {status !== 'completed' && status !== 'cancelled' && (
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.cancelButton]}
+                    onPress={handleCancelRide}
+                    disabled={animating}
+                  >
+                    <Icon name="cancel" size={20} color="#fff" />
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.completeButton]}
+                    onPress={handleCompleteRide}
+                    disabled={animating}
+                  >
+                    <Icon name="check-circle" size={20} color="#fff" />
+                    <Text style={styles.completeButtonText}>Complete</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          )}
+        </Animated.View>
+
+        {/* Confirmation Modal for Cancel/Complete */}
+        <ConfirmModal
+          visible={confirmModal.visible}
+          title={
+            confirmModal.action === 'cancel'
+              ? 'Cancel Ride'
+              : 'Complete Ride'
+          }
+          message={
+            confirmModal.action === 'cancel'
+              ? 'Are you sure you want to cancel this ride?'
+              : 'Mark this ride as complete?'
+          }
+          confirmText={confirmModal.action === 'cancel' ? 'Yes, Cancel' : 'Yes, Complete'}
+          cancelText="No"
+          onConfirm={
+            confirmModal.action === 'cancel'
+              ? handleConfirmCancel
+              : handleConfirmComplete
+          }
+          onCancel={() => {
+            setConfirmModal({ visible: false, action: null });
+            setCancelReason('');
+          }}
+        >
+          {confirmModal.action === 'cancel' && (
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#ddd',
+                borderRadius: 8,
+                padding: 10,
+                marginTop: 14,
+                marginBottom: 4,
+                width: 240,
+                alignSelf: 'center',
+                fontSize: 16,
+              }}
+              placeholder="Enter cancellation reason"
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              multiline
+              numberOfLines={3}
+              maxLength={140}
+            />
+          )}
+        </ConfirmModal>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 };
 
