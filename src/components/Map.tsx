@@ -12,6 +12,7 @@ interface MapProps {
   bottomOffset?: number;
   autoFitRoute?: boolean;
   currentCoords?: LatLng | null; // live driver location
+
 }
 
 const Map: React.FC<MapProps> = ({

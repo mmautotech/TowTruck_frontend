@@ -13,7 +13,7 @@ import { getDistance } from 'geolib';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Audio } from 'expo-av';
-
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchActiveServiceForTruck } from '../../../../api/truck';
 import { CompleteRide, reopenRideRequest } from '../../../../api/rideRequest';
 import type { ServiceResponse } from '../../../../api/types';
@@ -33,16 +33,17 @@ import styles from './styles';
 import { useDriverLocationUpdater } from "../../../../hooks/useDriverLocationUpdater";
 
 const EXPANDED_HEIGHT = hp(60); // 60% of screen height
-const COLLAPSED_HEIGHT = hp(5); // approx. 40px on standard ~800px screen height
+const COLLAPSED_HEIGHT = hp(10); // approx. 40px on standard ~800px screen height
 
 type NavProp = StackNavigationProp<TruckStackParamList, 'TruckServiceScreen'>;
 
 const TruckServiceScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
-const { coords: currentCoords } = useLocation();
+  const insets = useSafeAreaInsets(); // <-- Add this line
+  const { coords: currentCoords } = useLocation();
 
-// Send driver GPS to backend automatically
-useDriverLocationUpdater(currentCoords!);
+  // Send driver GPS to backend automatically
+  useDriverLocationUpdater(currentCoords!);
 
   // Animation
   const slideAnim = useRef(new Animated.Value(EXPANDED_HEIGHT)).current;
@@ -93,7 +94,7 @@ useDriverLocationUpdater(currentCoords!);
           setShownNotificationId(notifToShow._id);
           try {
             await markAsRead(notifToShow._id); // Marks notification as read
-          } catch {}
+          } catch { }
           refreshNotifications();
           navigation.dispatch(
             CommonActions.reset({
@@ -131,7 +132,7 @@ useDriverLocationUpdater(currentCoords!);
         { shouldPlay: true }
       );
       await sound.playAsync();
-    } catch {}
+    } catch { }
   };
 
   // Centralized loader: if no service, auto-navigate away
@@ -326,7 +327,7 @@ useDriverLocationUpdater(currentCoords!);
         : 0;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* --- Notification Modal --- */}
       <UniversalMessageModal
         visible={universalModal.visible}
@@ -353,17 +354,12 @@ useDriverLocationUpdater(currentCoords!);
         }}
       >
         <Map
-          region={{
-            latitude: midLatitude,
-            longitude: midLongitude,
-            latitudeDelta,
-            longitudeDelta,
-          }}
+          region={{ latitude: midLatitude, longitude: midLongitude, latitudeDelta, longitudeDelta }}
           originCoords={originCoords}
           destCoords={destCoords}
-          onMapPress={() => {}}
+          onMapPress={() => { }}
           currentCoords={currentCoords}
-          bottomOffset={panelHeight}
+          bottomOffset={panelHeight}// <-- Add insets here
           autoFitRoute={!isExpanded}
         />
       </Animated.View>
@@ -536,7 +532,7 @@ useDriverLocationUpdater(currentCoords!);
           />
         )}
       </ConfirmModal>
-    </View>
+    </SafeAreaView>
   );
 };
 

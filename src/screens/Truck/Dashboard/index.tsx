@@ -140,19 +140,19 @@ const TruckDashboardScreen: React.FC = () => {
             );
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [hasLoadedNotifications, notifLoading, notifications, showNotifModal, shownNotifId, navigation]);
 
   // --- Reverse geocode addresses (from and to) when coords change
   const { address: fromAddress } = useReverseGeocode(
-  acceptRideData?.fromCoordsNum?.[0] ?? 0,
-  acceptRideData?.fromCoordsNum?.[1] ?? 0
-);
-const { address: toAddress } = useReverseGeocode(
-  acceptRideData?.toCoordsNum?.[0] ?? 0,
-  acceptRideData?.toCoordsNum?.[1] ?? 0
-);
+    acceptRideData?.fromCoordsNum?.[0] ?? 0,
+    acceptRideData?.fromCoordsNum?.[1] ?? 0
+  );
+  const { address: toAddress } = useReverseGeocode(
+    acceptRideData?.toCoordsNum?.[0] ?? 0,
+    acceptRideData?.toCoordsNum?.[1] ?? 0
+  );
 
 
   // --- Handle AcceptRideModal OK

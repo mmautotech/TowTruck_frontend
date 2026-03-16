@@ -124,7 +124,7 @@ const RideRequestCard: React.FC<RideRequestCardProps> = React.memo(
         {/* header */}
         <View style={styles.headerRow}>
           <Image
-            source={{ uri: item.user_photo ||'https://cdn-icons-png.flaticon.com/512/847/847969.png' }}
+            source={{ uri: item.user_photo || 'https://cdn-icons-png.flaticon.com/512/847/847969.png' }}
             style={styles.avatar}
           />
           <View style={styles.titleBlock}>

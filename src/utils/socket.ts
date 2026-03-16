@@ -22,7 +22,7 @@ const SOCKET_URL = (() => {
     }
   }
   // final fallback
-  return 'http://192.168.0.101:5000';
+  return 'http://192.168.18.84:5000';
 })();
 
 interface AuthPayload { token: string; }
