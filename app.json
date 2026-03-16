@@ -2,11 +2,12 @@
   "expo": {
     "name": "towly",
     "slug": "towly",
+    "owner": "mmautotechmobileapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -28,7 +29,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "4858e267-6b6f-413b-b0dc-7c512065a41b"
+        "projectId": "27b3bbbf-0644-4d0e-a876-ffdda036aa4b"
       }
     }
   }
