@@ -23,6 +23,7 @@
     "expo-image-manipulator": "~14.0.8",
     "expo-image-picker": "~17.0.10",
     "expo-location": "~19.0.8",
+    "expo-notifications": "~0.32.16",
     "expo-status-bar": "~3.0.9",
     "geolib": "^3.3.4",
     "jwt-decode": "^4.0.0",

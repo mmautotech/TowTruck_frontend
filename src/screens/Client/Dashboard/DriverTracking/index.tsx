@@ -127,43 +127,43 @@ const ClientDriverTrackingScreen: React.FC = () => {
 
   /* ---------------- Fetch Live Vehicle Location ---------------- */
 
- useEffect(() => {
-  if (!driverInfo) return;
+  useEffect(() => {
+    if (!driverInfo) return;
 
-  const driverId =
-    driverInfo?.driver_id ||
-    driverInfo?.truck?.user_id ||
-    driverInfo?.truck?.id;
+    const driverId =
+      driverInfo?.driver_id ||
+      driverInfo?.truck?.user_id ||
+      driverInfo?.truck?.id;
 
-  if (!driverId) return;
+    if (!driverId) return;
 
-  const fetchLocation = async () => {
-    try {
-      console.log("Fetching vehicle location for:", driverId);
+    const fetchLocation = async () => {
+      try {
+        console.log("Fetching vehicle location for:", driverId);
 
-      const res = await getVehicleLocation(driverId);
+        const res = await getVehicleLocation(driverId);
 
-      console.log("Vehicle location response:", res);
+        console.log("Vehicle location response:", res);
 
-      if (res?.success && res?.location?.coordinates) {
-        const [lon, lat] = res.location.coordinates;
+        if (res?.success && res?.location?.coordinates) {
+          const [lon, lat] = res.location.coordinates;
 
-        setVehicleLocation({
-          latitude: lat,
-          longitude: lon,
-        });
+          setVehicleLocation({
+            latitude: lat,
+            longitude: lon,
+          });
+        }
+      } catch (err) {
+        console.log("Vehicle location error:", err);
       }
-    } catch (err) {
-      console.log("Vehicle location error:", err);
-    }
-  };
+    };
 
-  fetchLocation();
+    fetchLocation();
 
-  const interval = setInterval(fetchLocation, 5000);
+    const interval = setInterval(fetchLocation, 5000);
 
-  return () => clearInterval(interval);
-}, [driverInfo]);
+    return () => clearInterval(interval);
+  }, [driverInfo]);
 
   /* ---------------- Notification Handling ---------------- */
 

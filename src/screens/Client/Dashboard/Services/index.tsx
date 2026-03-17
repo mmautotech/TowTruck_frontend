@@ -10,7 +10,7 @@ import { useNavigation, CommonActions } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { LatLng } from 'react-native-maps';
 import { getDistance } from 'geolib';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ Added
 import CustomHeader from '../../../../components/CustomHeader';
 import OfferModal from '../../../../components/OfferModal';
 import ServicesList from './ServicesList';
@@ -30,11 +30,12 @@ type NavProp = StackNavigationProp<ClientStackParamList, 'ClientServicesScreen'>
 
 const ClientServicesScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
+  const insets = useSafeAreaInsets(); // ✅ Added
   const { coords: userCoords, error: locError, loading: locLoading } = useLocation();
 
   const [request, setRequest] = useState<RideRequest | null>(null);
   const [loadingRequest, setLoadingRequest] = useState(true);
-  const [refetchOffers, setRefetchOffers] = useState<() => void>(() => () => {});
+  const [refetchOffers, setRefetchOffers] = useState<() => void>(() => () => { });
   const [isAccepting, setIsAccepting] = useState(false);
 
   // 1. Load the single active ride request on mount
@@ -70,16 +71,16 @@ const ClientServicesScreen: React.FC = () => {
   // 3. Prepare coords & reverse-geocode
   const originCoords: LatLng = request
     ? {
-        latitude: request.origin_location.coordinates[1],
-        longitude: request.origin_location.coordinates[0],
-      }
+      latitude: request.origin_location.coordinates[1],
+      longitude: request.origin_location.coordinates[0],
+    }
     : { latitude: 0, longitude: 0 };
 
   const destCoords: LatLng = request
     ? {
-        latitude: request.dest_location.coordinates[1],
-        longitude: request.dest_location.coordinates[0],
-      }
+      latitude: request.dest_location.coordinates[1],
+      longitude: request.dest_location.coordinates[0],
+    }
     : { latitude: 0, longitude: 0 };
 
   const { address: originAddress } = useReverseGeocode(originCoords.latitude, originCoords.longitude);
@@ -225,12 +226,13 @@ const ClientServicesScreen: React.FC = () => {
 
       {/* Cancel Request button */}
       <TouchableOpacity
-        style={styles.cancelButton}
+        style={[styles.cancelButton, { marginBottom: insets.bottom + 10 }]} // ✅ bottom safe spacing only
         onPress={handleCancelRequest}
         disabled={isSubmitting || isAccepting}
       >
         <Text style={styles.cancelText}>Cancel Request</Text>
       </TouchableOpacity>
+
 
       {/* Counter Offer Modal */}
       <OfferModal

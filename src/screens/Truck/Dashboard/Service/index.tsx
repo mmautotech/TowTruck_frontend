@@ -364,7 +364,15 @@ const TruckServiceScreen: React.FC = () => {
         />
       </Animated.View>
 
-      <Animated.View style={[styles.detailsPanel, { height: slideAnim }]}>
+      <Animated.View
+        style={[
+          styles.detailsPanel,
+          {
+            height: slideAnim,
+            paddingBottom: isExpanded ? insets.bottom : 0, // <-- only when expanded
+          },
+        ]}
+      >
         <TouchableOpacity onPress={togglePanel} style={styles.arrowContainer}>
           <Icon
             name={isExpanded ? 'keyboard-arrow-down' : 'keyboard-arrow-up'}
