@@ -146,13 +146,57 @@ export default function TruckProfileScreen() {
   // validators
   const validateDriver = () => {
     const errs: any = {};
+
+    const isValidDateFormat = (dateStr: string) =>
+      /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])-(19|20)\d{2}$/.test(dateStr);
+
+    const parseDate = (dateStr: string) => {
+      const [day, month, year] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
+    // first & last name
     if (!firstName.trim()) errs.firstName = 'Required';
     if (!lastName.trim()) errs.lastName = 'Required';
-    if (!dob.trim()) errs.dob = 'Required';
+
+    // DOB
+    if (!dob.trim()) {
+      errs.dob = 'Required';
+    } else if (!isValidDateFormat(dob)) {
+      errs.dob = 'Invalid format (DD-MM-YYYY)';
+    } else {
+      const dobDate = parseDate(dob);
+      const today = new Date();
+      if (!dobDate) {
+        errs.dob = 'Invalid date';
+      } else if (dobDate >= today) {
+        errs.dob = 'DOB must be in the past';
+      } else {
+        const age = today.getFullYear() - dobDate.getFullYear();
+        const m = today.getMonth() - dobDate.getMonth();
+        const actualAge = m < 0 || (m === 0 && today.getDate() < dobDate.getDate()) ? age - 1 : age;
+        if (actualAge < 18) errs.dob = 'Minimum age is 18';
+      }
+    }
+
+    // license number & expiry
     if (!licenseNumber.trim()) errs.licenseNumber = 'Required';
-    if (!licenseExpiry.trim()) errs.licenseExpiry = 'Required';
+    if (!licenseExpiry.trim()) {
+      errs.licenseExpiry = 'Required';
+    } else if (!isValidDateFormat(licenseExpiry)) {
+      errs.licenseExpiry = 'Invalid format (DD-MM-YYYY)';
+    } else {
+      const expiryDate = parseDate(licenseExpiry);
+      const today = new Date();
+      if (!expiryDate) errs.licenseExpiry = 'Invalid date';
+      else if (expiryDate <= today) errs.licenseExpiry = 'License is expired';
+    }
+
+    // email & phone
     if (!email.trim()) errs.email = 'Required';
     if (!phoneNumber.trim()) errs.phoneNumber = 'Required';
+
     setDriverErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -169,7 +213,6 @@ export default function TruckProfileScreen() {
 
   // save handler
   const handleSave = async () => {
-    // driver tab: save & switch
     if (activeTab === 'driver') {
       if (!validateDriver()) return;
       setSaving(true);
@@ -200,7 +243,6 @@ export default function TruckProfileScreen() {
       return;
     }
 
-    // vehicle tab: save & navigate
     if (!validateVehicle()) return;
     setSaving(true);
     try {
@@ -222,7 +264,7 @@ export default function TruckProfileScreen() {
     }
   };
 
-  // forms
+  // render forms
   const renderDriverForm = () => (
     <>
       <LabeledTextInput label="First Name" value={firstName} onChangeText={setFirstName} error={driverErrors.firstName} />

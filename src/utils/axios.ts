@@ -8,13 +8,13 @@ import axios, {
 } from 'axios';
 import { SignoutUser } from './Signout_User';
 
-const DEV_API = process.env.EXPO_PUBLIC_API_URL_DEV ?? 'http://192.168.18.84:5000/api';
-const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'http://192.168.18.84:5000/api';
+const DEV_API = process.env.EXPO_PUBLIC_API_URL_DEV ?? 'https://towly-backend.onrender.com/api';
+const PROD_API = process.env.EXPO_PUBLIC_API_URL_PROD ?? 'https://towly-backend.onrender.com/api';
 const baseURL = __DEV__ ? DEV_API : PROD_API;
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL,
-  timeout: 30000,
+  timeout: 40000,
 });
 
 // In-memory auth token
