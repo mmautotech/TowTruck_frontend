@@ -27,7 +27,7 @@ import {
 } from '../../../../api/rideRequest';
 
 import { getVehicleLocation } from '../../../../api/user';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useClientSocket } from '../../../../hooks/useClientSocket';
 import { setItem } from '../../../../utils/asyncStorage';
 import { CancelRideModal } from '../../../../components/CancelRideModal';
@@ -328,7 +328,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
   /* ---------------- UI ---------------- */
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <HeaderMenuButton />
 
       <UniversalMessageModal
@@ -340,12 +340,6 @@ const ClientDriverTrackingScreen: React.FC = () => {
 
       <Animated.View style={{ height: mapHeight }}>
         <Map
-          region={{
-            latitude: lat,
-            longitude: lon,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
           originCoords={originCoords}
           destCoords={destCoords}
           truckers={truckerCoords}
@@ -443,7 +437,7 @@ const ClientDriverTrackingScreen: React.FC = () => {
         onCancelPermanent={handleCancelPermanent}
         onReopen={handleReopen}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

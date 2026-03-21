@@ -53,15 +53,12 @@ export default function useReverseGeocode(
         }
 
         const {
-          name = '',
-          street = '',
-          city = '',
-          region = '',
+
 
           postalCode = '',
         } = place;
 
-        const parts = [name, street, city, region, postalCode].filter(Boolean);
+        const parts = [postalCode].filter(Boolean);
         const formattedAddress = parts.join(', ');
 
         // ✅ cache result

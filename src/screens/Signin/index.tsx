@@ -92,6 +92,7 @@ const SigninScreen: React.FC<Props> = ({ navigation }) => {
               style={styles.input}
               placeholder="Phone Number"
               keyboardType="phone-pad"
+              placeholderTextColor="#999"
               value={phone}
               onChangeText={setPhone}
             />
@@ -100,6 +101,7 @@ const SigninScreen: React.FC<Props> = ({ navigation }) => {
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Password"
+                placeholderTextColor="#999"
                 secureTextEntry={secure}
                 value={pass}
                 onChangeText={setPass}

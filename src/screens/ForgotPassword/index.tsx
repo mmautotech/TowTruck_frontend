@@ -93,6 +93,7 @@ const ForgotPasswordScreen: React.FC<Props> = ({ navigation }) => {
 
             <AuthInput
               placeholder="Phone Number"
+
               value={phoneNo}
               onChange={setPhoneNo}
               keyboardType="phone-pad"

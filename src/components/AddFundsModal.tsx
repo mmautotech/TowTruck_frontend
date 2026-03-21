@@ -65,6 +65,7 @@ const AddFundsModal: React.FC<AddFundsModalProps> = ({
 
           <TextInput
             placeholder="Enter amount"
+            placeholderTextColor="#999"
             keyboardType="numeric"
             value={amount}
             onChangeText={setAmount}
@@ -73,7 +74,8 @@ const AddFundsModal: React.FC<AddFundsModalProps> = ({
           />
 
           <TextInput
-            placeholder="Proof details (e.g. Bank Ref#)"
+            placeholder="Proof details (e.g. Bank Ref#) or Car Reg"
+            placeholderTextColor="#999"
             value={proofDetails}
             onChangeText={setProofDetails}
             style={styles.input}

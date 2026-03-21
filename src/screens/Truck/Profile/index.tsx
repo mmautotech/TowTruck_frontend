@@ -283,9 +283,9 @@ export default function TruckProfileScreen() {
         editable={false}
         style={{ backgroundColor: '#f2f2f2' }}
       />
-      <LabeledTextInput label="Date of Birth" value={dob} onChangeText={setDob} error={driverErrors.dob} placeholder="DD-MM-YYYY" />
+      <LabeledTextInput label="Date of Birth" value={dob} onChangeText={setDob} error={driverErrors.dob} placeholder="DD-MM-YYYY" placeholderTextColor="#999" />
       <LabeledTextInput label="License Number" value={licenseNumber} onChangeText={setLicenseNumber} error={driverErrors.licenseNumber} />
-      <LabeledTextInput label="License Expiry" value={licenseExpiry} onChangeText={setLicenseExpiry} error={driverErrors.licenseExpiry} placeholder="DD-MM-YYYY" />
+      <LabeledTextInput label="License Expiry" value={licenseExpiry} onChangeText={setLicenseExpiry} error={driverErrors.licenseExpiry} placeholder="DD-MM-YYYY" placeholderTextColor="#999" />
       <UploadImageBox label="License Front" image={frontImg} onPress={() => handlePickImage('frontImg')} onRemove={() => setFrontImg(null)} />
       <UploadImageBox label="License Back" image={backImg} onPress={() => handlePickImage('backImg')} onRemove={() => setBackImg(null)} />
       <UploadImageBox label="Selfie" image={selfieImg} onPress={() => handlePickImage('selfieImg')} onRemove={() => setSelfieImg(null)} />

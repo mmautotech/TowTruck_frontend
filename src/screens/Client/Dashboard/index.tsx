@@ -52,7 +52,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const ClientDashboardScreen: React.FC = () => {
-
+  const [mapAutoFitEnabled, setMapAutoFitEnabled] = useState(true);
   const navigation = useNavigation<NavProp>();
 
   const [checkingProfile, setCheckingProfile] = useState(true);
@@ -353,7 +353,6 @@ const ClientDashboardScreen: React.FC = () => {
 
       <View style={{ flex: mapFlex }}>
         <Map
-          region={region}
           originCoords={originCoords}
           destCoords={destCoords}
           routeCoords={routeCoords}
@@ -419,6 +418,7 @@ const ClientDashboardScreen: React.FC = () => {
             <DateTimePicker
               value={pickupDate}
               mode="date"
+
               display="default"
               minimumDate={new Date()}
               onChange={handleDateChange}
@@ -428,6 +428,7 @@ const ClientDashboardScreen: React.FC = () => {
           <TextInput
             style={styles.input}
             placeholder="Make & Model (e.g. AUDI A3)"
+            placeholderTextColor="#999"
             value={vehicleMakeModel}
             onChangeText={setVehicleMakeModel}
           />
@@ -435,6 +436,7 @@ const ClientDashboardScreen: React.FC = () => {
           <TextInput
             style={styles.input}
             placeholder="Registration Number"
+            placeholderTextColor="#999"
             value={regNumber}
             onChangeText={setRegNumber}
           />
@@ -442,6 +444,7 @@ const ClientDashboardScreen: React.FC = () => {
           <TextInput
             style={styles.input}
             placeholder="Year of Manufacture"
+            placeholderTextColor="#999"
             keyboardType="numeric"
             value={year}
             onChangeText={setYear}
@@ -458,38 +461,45 @@ const ClientDashboardScreen: React.FC = () => {
           {isVan && (
             <>
               <Text style={styles.label}>Vehicle Category</Text>
-
-              <Picker
-                selectedValue={vehicleCategory}
-                onValueChange={v => setVehicleCategory(v as any)}
-              >
-                <Picker.Item label="Options" value="donot-apply" />
-                <Picker.Item label="Short Wheel Base" value="Short Wheel Base" />
-                <Picker.Item label="Medium Wheel Base" value="Medium Wheel Base" />
-                <Picker.Item label="Long Wheel Base" value="Long Wheel Base" />
-              </Picker>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={vehicleCategory}
+                  onValueChange={v => setVehicleCategory(v as any)}
+                  mode="dropdown"  // <-- ADD THIS
+                >
+                  <Picker.Item label="Select Vehicle Category" value="" enabled={false} />
+                  <Picker.Item label="Short Wheel Base" value="Short Wheel Base" />
+                  <Picker.Item label="Medium Wheel Base" value="Medium Wheel Base" />
+                  <Picker.Item label="Long Wheel Base" value="Long Wheel Base" />
+                </Picker>
+              </View>
 
               <Text style={styles.label}>Loaded Status</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={loadedStatus}
+                  onValueChange={v => setLoadedStatus(v as any)}
+                  mode="dropdown"  // <-- ADD THIS
+                >
 
-              <Picker
-                selectedValue={loadedStatus}
-                onValueChange={v => setLoadedStatus(v as any)}
-              >
-                <Picker.Item label="Unloaded" value="Unloaded" />
-                <Picker.Item label="Loaded" value="Loaded" />
-              </Picker>
+                  <Picker.Item label="Unloaded" value="Unloaded" />
+                  <Picker.Item label="Loaded" value="Loaded" />
+                </Picker>
+              </View>
             </>
           )}
 
           <Text style={styles.label}>Wheels Category</Text>
-
-          <Picker
-            selectedValue={wheelsCategory}
-            onValueChange={v => setWheelsCategory(v as any)}
-          >
-            <Picker.Item label="Wheels Are Rolling" value="Wheels Are Rolling" />
-            <Picker.Item label="Wheels Are Not Rolling" value="Wheels Are Not Rolling" />
-          </Picker>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={wheelsCategory}
+              onValueChange={v => setWheelsCategory(v as any)}
+              mode="dropdown"  // <-- ADD THIS
+            >
+              <Picker.Item label="Wheels Are Rolling" value="Wheels Are Rolling" />
+              <Picker.Item label="Wheels Are Not Rolling" value="Wheels Are Not Rolling" />
+            </Picker>
+          </View>
 
           <TouchableOpacity
             style={styles.submit}

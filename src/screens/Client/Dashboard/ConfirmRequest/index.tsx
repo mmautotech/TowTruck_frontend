@@ -13,7 +13,7 @@ import {
   useNavigation,
 } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomHeader from '../../../../components/CustomHeader';
 import styles from './styles';
 import {
@@ -40,7 +40,7 @@ const ClientConfirmRequestScreen: React.FC = () => {
   const dLon = request?.dest_location?.coordinates?.[0] ?? 0;
 
   const { address: originAddress } = useReverseGeocode(oLat, oLon);
-  const { address: destAddress }   = useReverseGeocode(dLat, dLon);
+  const { address: destAddress } = useReverseGeocode(dLat, dLon);
 
   // Always check request status and reset if missing on every focus
   useFocusEffect(
@@ -151,19 +151,19 @@ const ClientConfirmRequestScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <CustomHeader title="Confirm Your Request" />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Detail label="Pickup Date"      value={new Date(pickup_date).toDateString()} />
-        <Detail label="Pickup Location"  value={originAddress} />
+        <Detail label="Pickup Date" value={new Date(pickup_date).toDateString()} />
+        <Detail label="Pickup Location" value={originAddress} />
         <Detail label="Dropoff Location" value={destAddress} />
-        <Detail label="Make"             value={vehicle_details.make} />
-        <Detail label="Model"            value={vehicle_details.model} />
-        <Detail label="Registration No"  value={vehicle_details.registration} />
-        <Detail label="Year"             value={vehicle_details.year_of_manufacture.toString()} />
-        <Detail label="Wheels Category"  value={vehicle_details.wheels_category} />
+        <Detail label="Make" value={vehicle_details.make} />
+        <Detail label="Model" value={vehicle_details.model} />
+        <Detail label="Registration No" value={vehicle_details.registration} />
+        <Detail label="Year" value={vehicle_details.year_of_manufacture.toString()} />
+        <Detail label="Wheels Category" value={vehicle_details.wheels_category} />
         {vehicle_details.vehicle_category !== 'donot-apply' && (
-          <Detail label="Vehicle Category"  value={vehicle_details.vehicle_category} />
+          <Detail label="Vehicle Category" value={vehicle_details.vehicle_category} />
         )}
         {vehicle_details.loaded !== 'Unloaded' && (
           <Detail label="Status" value={vehicle_details.loaded} />
@@ -185,7 +185,7 @@ const ClientConfirmRequestScreen: React.FC = () => {
           <Text style={styles.cancelText}>CANCEL REQUEST</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

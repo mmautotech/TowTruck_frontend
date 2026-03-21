@@ -78,4 +78,23 @@ export default StyleSheet.create({
     fontSize: wp(4.2),
     fontWeight: 'bold',
   },
+
+  // ✅ Picker container fixed for Android
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: wp(2),
+    marginBottom: hp(1.5),
+    overflow: 'hidden',           // critical for Android
+    backgroundColor: '#fff',
+    height: hp(8),                 // sets visible height for value
+    justifyContent: 'center',      // vertically center text
+  },
+
+  // ✅ Picker text style
+  picker: {
+    height: hp(7.5),
+    width: '100%',
+    color: '#000',
+  }
 });

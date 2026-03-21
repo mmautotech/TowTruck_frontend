@@ -8,12 +8,15 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/playstore.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +24,12 @@
         "backgroundColor": "#357EBD"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.mmitsol.towly"
+      "package": "com.mmitsol.towly",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCtdSur_kgpmk5z4Olvk6HvhLPx82dUR7o"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +38,9 @@
       "eas": {
         "projectId": "27b3bbbf-0644-4d0e-a876-ffdda036aa4b"
       }
-    }
+    },
+    "plugins": [
+      "expo-maps"
+    ]
   }
 }

@@ -354,12 +354,11 @@ const TruckServiceScreen: React.FC = () => {
         }}
       >
         <Map
-          region={{ latitude: midLatitude, longitude: midLongitude, latitudeDelta, longitudeDelta }}
           originCoords={originCoords}
           destCoords={destCoords}
           onMapPress={() => { }}
           currentCoords={currentCoords}
-          bottomOffset={panelHeight}// <-- Add insets here
+          bottomOffset={panelHeight}
           autoFitRoute={!isExpanded}
         />
       </Animated.View>
@@ -532,6 +531,7 @@ const TruckServiceScreen: React.FC = () => {
               fontSize: 16,
             }}
             placeholder="Enter cancellation reason"
+            placeholderTextColor="#999"
             value={cancelReason}
             onChangeText={setCancelReason}
             multiline

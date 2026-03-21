@@ -39,6 +39,7 @@ export const CancelRideModal: React.FC<CancelRideModalProps> = ({
           <TextInput
             style={styles.textInput}
             placeholder="Enter cancellation reason"
+            placeholderTextColor="#999"
             value={reason}
             onChangeText={setReason}
             multiline
