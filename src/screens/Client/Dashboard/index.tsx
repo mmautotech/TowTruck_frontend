@@ -44,6 +44,7 @@ import { useLocation } from '../../../hooks/useLocation';
 import useReverseGeocode from '../../../hooks/useReverseGeocode';
 import { SignoutUser } from '../../../utils/Signout_User';
 import { getRoute } from '../../../api/location';
+import usePlaces from '../../../hooks/usePlaces';
 
 type NavProp = StackNavigationProp<ClientStackParamList, 'ClientDashboardScreen'>;
 
@@ -63,7 +64,17 @@ const ClientDashboardScreen: React.FC = () => {
   const [region, setRegion] = useState<Region | null>(null);
   const [originCoords, setOriginCoords] = useState<LatLng | null>(null);
   const [destCoords, setDestCoords] = useState<LatLng | null>(null);
-  const [routeCoords, setRouteCoords] = useState<LatLng[]>([]);
+
+  const [routeCoords, setRouteCoords] = useState<LatLng[]>([]); const {
+    originText,
+    destText,
+    originResults,
+    destResults,
+    handleOriginSearch,
+    handleDestSearch,
+    selectOrigin,
+    selectDest,
+  } = usePlaces({ setOriginCoords, setDestCoords });
 
   const [focusedField, setFocusedField] =
     useState<'origin' | 'destination' | null>(null);
@@ -375,36 +386,37 @@ const ClientDashboardScreen: React.FC = () => {
             Tap “From” or “To”, then tap the map to set your location
           </Text>
 
-          <TouchableOpacity
-            style={[
-              styles.input,
-              focusedField === 'origin' && { borderColor: '#357EBD', borderWidth: 2 },
-            ]}
-            onPress={() => setFocusedField('origin')}
-          >
-            <Text style={{ color: originCoords ? '#000' : '#999' }}>
-              {originCoords
-                ? originAddress ||
-                `${originCoords.latitude.toFixed(5)}, ${originCoords.longitude.toFixed(5)}`
-                : 'From'}
-            </Text>
-          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            placeholder="From"
+            value={originText}
+            onChangeText={handleOriginSearch}
+          />
 
-          <TouchableOpacity
-            style={[
-              styles.input,
-              focusedField === 'destination' && { borderColor: '#357EBD', borderWidth: 2 },
-            ]}
-            onPress={() => setFocusedField('destination')}
-          >
-            <Text style={{ color: destCoords ? '#000' : '#999' }}>
-              {destCoords
-                ? destAddress ||
-                `${destCoords.latitude.toFixed(5)}, ${destCoords.longitude.toFixed(5)}`
-                : 'To'}
-            </Text>
-          </TouchableOpacity>
+          {originResults.map((item) => (
+            <TouchableOpacity
+              key={item.place_id}
+              onPress={() => selectOrigin(item.place_id, item.description)}
+            >
+              <Text style={{ padding: 10 }}>{item.description}</Text>
+            </TouchableOpacity>
+          ))}
 
+          <TextInput
+            style={styles.input}
+            placeholder="To"
+            value={destText}
+            onChangeText={handleDestSearch}
+          />
+
+          {destResults.map((item) => (
+            <TouchableOpacity
+              key={item.place_id}
+              onPress={() => selectDest(item.place_id, item.description)}
+            >
+              <Text style={{ padding: 10 }}>{item.description}</Text>
+            </TouchableOpacity>
+          ))}
           <Text style={styles.label}>Pickup Date</Text>
 
           <TouchableOpacity
@@ -466,6 +478,7 @@ const ClientDashboardScreen: React.FC = () => {
                   selectedValue={vehicleCategory}
                   onValueChange={v => setVehicleCategory(v as any)}
                   mode="dropdown"  // <-- ADD THIS
+                  style={{ color: vehicleCategory ? '#000' : '#999' }}
                 >
                   <Picker.Item label="Select Vehicle Category" value="" enabled={false} />
                   <Picker.Item label="Short Wheel Base" value="Short Wheel Base" />
@@ -480,6 +493,7 @@ const ClientDashboardScreen: React.FC = () => {
                   selectedValue={loadedStatus}
                   onValueChange={v => setLoadedStatus(v as any)}
                   mode="dropdown"  // <-- ADD THIS
+                  style={{ color: vehicleCategory ? '#000' : '#999' }}
                 >
 
                   <Picker.Item label="Unloaded" value="Unloaded" />
@@ -495,6 +509,7 @@ const ClientDashboardScreen: React.FC = () => {
               selectedValue={wheelsCategory}
               onValueChange={v => setWheelsCategory(v as any)}
               mode="dropdown"  // <-- ADD THIS
+              style={{ color: vehicleCategory ? '#000' : '#999' }}
             >
               <Picker.Item label="Wheels Are Rolling" value="Wheels Are Rolling" />
               <Picker.Item label="Wheels Are Not Rolling" value="Wheels Are Not Rolling" />

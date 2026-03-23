@@ -4,11 +4,11 @@
     "slug": "towly",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/playstore.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/playstore.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,6 +16,10 @@
       "supportsTablet": true,
       "config": {
         "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY"
+      },
+      "bundleIdentifier": "com.mmitsol.towly",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -40,7 +44,8 @@
       }
     },
     "plugins": [
-      "expo-maps"
+      "expo-maps",
+      "expo-font"
     ]
   }
 }

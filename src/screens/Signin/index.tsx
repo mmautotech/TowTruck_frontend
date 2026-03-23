@@ -128,11 +128,7 @@ const SigninScreen: React.FC<Props> = ({ navigation }) => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => navigation.navigate('ForgotPasswordScreen')}
-            >
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
+
 
             <View style={styles.signupContainer}>
               <Text>Don't have an account? </Text>
