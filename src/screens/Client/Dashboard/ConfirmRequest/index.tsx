@@ -151,7 +151,7 @@ const ClientConfirmRequestScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <CustomHeader title="Confirm Your Request" />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Detail label="Pickup Date" value={new Date(pickup_date).toDateString()} />

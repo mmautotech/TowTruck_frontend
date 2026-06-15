@@ -2,47 +2,64 @@
   "expo": {
     "name": "towly",
     "slug": "towly",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/playstore.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "YOUR_IOS_GOOGLE_MAPS_API_KEY"
-      },
+      "supportsTablet": false,
+      "buildNumber": "5",
+
+
+
       "bundleIdentifier": "com.mmitsol.towly",
+
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+  "ITSAppUsesNonExemptEncryption": false,
+
+  "NSLocationWhenInUseUsageDescription":
+    "Towly uses your location to detect your pickup address, show nearby towing providers, and help drivers navigate to your location during roadside assistance requests.",
+
+  "NSLocationAlwaysAndWhenInUseUsageDescription":
+    "Towly uses your location in the background during active towing or roadside assistance requests so drivers can track your live location and provide accurate pickup services."
+}
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#357EBD"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.mmitsol.towly",
+
+   "android": {
+  "versionCode": 4,
+  "enableProguardInReleaseBuilds": true,
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/adaptive-icon.png",
+    "backgroundColor": "#357EBD"
+  },
+  "edgeToEdgeEnabled": true,
+  "package": "com.mmitsol.towly",
+
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyCtdSur_kgpmk5z4Olvk6HvhLPx82dUR7o"
         }
       }
     },
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
+
     "extra": {
       "eas": {
         "projectId": "27b3bbbf-0644-4d0e-a876-ffdda036aa4b"
       }
     },
+
     "plugins": [
       "expo-maps",
       "expo-font"
