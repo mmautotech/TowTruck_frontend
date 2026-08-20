@@ -14,6 +14,7 @@ import {
   Keyboard,
   LayoutAnimation,
   UIManager,
+  Linking,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
@@ -59,7 +60,13 @@ const ClientDashboardScreen: React.FC = () => {
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
 
-  const { coords, loading: locLoading } = useLocation();
+  const {
+    coords,
+    loading: locLoading,
+    servicesEnabled,
+    permissionDenied,
+    refresh: refreshLocation,
+  } = useLocation();
 
   const [region, setRegion] = useState<Region | null>(null);
   const [originCoords, setOriginCoords] = useState<LatLng | null>(null);
@@ -343,6 +350,46 @@ const ClientDashboardScreen: React.FC = () => {
     }
 
   };
+
+  // Location is OFF (or permission denied) — tell the user instead of hanging.
+  if (servicesEnabled === false || permissionDenied) {
+    const isPermission = permissionDenied && servicesEnabled !== false;
+    return (
+      <View style={[styles.center, { paddingHorizontal: 32 }]}>
+        <Text style={{ fontSize: 20, fontWeight: '600', textAlign: 'center' }}>
+          {isPermission ? 'Location permission needed' : 'Location is turned off'}
+        </Text>
+        <Text style={{ marginTop: 12, textAlign: 'center', color: '#555', lineHeight: 20 }}>
+          {isPermission
+            ? 'Please allow location access so Towly can detect your pickup address and show nearby providers.'
+            : 'Please turn on location services so Towly can detect your pickup address and show nearby providers.'}
+        </Text>
+
+        <TouchableOpacity
+          style={{
+            marginTop: 24,
+            backgroundColor: '#357EBD',
+            paddingVertical: 12,
+            paddingHorizontal: 28,
+            borderRadius: 8,
+          }}
+          onPress={() => {
+            if (Platform.OS === 'ios') {
+              Linking.openURL('app-settings:');
+            } else {
+              Linking.openSettings();
+            }
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Open Settings</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={{ marginTop: 16 }} onPress={() => refreshLocation()}>
+          <Text style={{ color: '#357EBD', fontWeight: '600' }}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (checkingProfile || profileComplete === null || locLoading || !region) {
     return (
